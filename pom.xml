@@ -35,6 +35,9 @@
         <logback.version>1.2.13</logback.version>
         <spring-security.version>5.7.12</spring-security.version>
         <spring-framework.version>5.3.39</spring-framework.version>
+        <knife4j-spring-boot-starter.version>3.0.3</knife4j-spring-boot-starter.version>
+        <decimal4j-version>1.0.3</decimal4j-version>
+        <joda-money-version>1.0.3</joda-money-version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -218,6 +221,23 @@
                 <version>${ruoyi.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-spring-boot-starter</artifactId>
+                <version>${knife4j-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.decimal4j</groupId>
+                <artifactId>decimal4j</artifactId>
+                <version>${decimal4j-version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.joda</groupId>
+                <artifactId>joda-money</artifactId>
+                <version>${joda-money-version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -3,6 +3,8 @@ package com.ruoyi.framework.config;
 import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.DispatcherType;
+
+import com.ruoyi.uni.util.RequestFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -53,6 +55,14 @@ public class FilterConfig
         registration.setName("repeatableFilter");
         registration.setOrder(FilterRegistrationBean.LOWEST_PRECEDENCE);
         return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RequestFilter> loggingFilter() {
+        FilterRegistrationBean<RequestFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new RequestFilter());
+        registrationBean.addUrlPatterns("/api");  // 设置过滤器的 URL 模式
+        return registrationBean;
     }
 
 }

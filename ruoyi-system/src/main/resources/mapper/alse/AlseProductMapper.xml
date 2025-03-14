@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.alse.mapper.AlseProductMapper">
+    
+    <resultMap type="AlseProduct" id="AlseProductResult">
+        <result property="productId"    column="product_id"    />
+        <result property="productTitle"    column="product_title"    />
+        <result property="productCategory"    column="product_category"    />
+        <result property="productCoverImg"    column="product_cover_img"    />
+        <result property="productDetailImgs"    column="product_detail_imgs"    />
+        <result property="productDescription"    column="product_description"    />
+        <result property="productPrice"    column="product_price"    />
+        <result property="shippingMethod"    column="shipping_method"    />
+        <result property="salesCount"    column="sales_count"    />
+        <result property="productStatus"    column="product_status"    />
+        <result property="publisherId"    column="publisher_id"    />
+        <result property="publisherName"    column="publisher_name"    />
+        <result property="publisherPhone"    column="publisher_phone"    />
+        <result property="productRating"    column="product_rating"    />
+        <result property="shopName"    column="shop_name"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectAlseProductVo">
+        select product_id, product_title, product_category, product_cover_img, product_detail_imgs, product_description, product_price, shipping_method, sales_count, product_status, publisher_id, publisher_name, publisher_phone, product_rating, shop_name, status, create_by, create_time, update_by, update_time, remark from alse_product
+    </sql>
+
+    <select id="selectAlseProductList" parameterType="AlseProduct" resultMap="AlseProductResult">
+        <include refid="selectAlseProductVo"/>
+        <where>  
+            <if test="productTitle != null  and productTitle != ''"> and product_title = #{productTitle}</if>
+            <if test="productCategory != null  and productCategory != ''"> and product_category = #{productCategory}</if>
+            <if test="productCoverImg != null  and productCoverImg != ''"> and product_cover_img = #{productCoverImg}</if>
+            <if test="productDetailImgs != null  and productDetailImgs != ''"> and product_detail_imgs = #{productDetailImgs}</if>
+            <if test="productDescription != null  and productDescription != ''"> and product_description = #{productDescription}</if>
+            <if test="productPrice != null "> and product_price = #{productPrice}</if>
+            <if test="shippingMethod != null  and shippingMethod != ''"> and shipping_method = #{shippingMethod}</if>
+            <if test="salesCount != null "> and sales_count = #{salesCount}</if>
+            <if test="productStatus != null  and productStatus != ''"> and product_status = #{productStatus}</if>
+            <if test="publisherId != null "> and publisher_id = #{publisherId}</if>
+            <if test="publisherName != null  and publisherName != ''"> and publisher_name like concat('%', #{publisherName}, '%')</if>
+            <if test="publisherPhone != null  and publisherPhone != ''"> and publisher_phone = #{publisherPhone}</if>
+            <if test="productRating != null "> and product_rating = #{productRating}</if>
+            <if test="shopName != null  and shopName != ''"> and shop_name like concat('%', #{shopName}, '%')</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectAlseProductByProductId" parameterType="Long" resultMap="AlseProductResult">
+        <include refid="selectAlseProductVo"/>
+        where product_id = #{productId}
+    </select>
+
+    <insert id="insertAlseProduct" parameterType="AlseProduct" useGeneratedKeys="true" keyProperty="productId">
+        insert into alse_product
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="productTitle != null and productTitle != ''">product_title,</if>
+            <if test="productCategory != null and productCategory != ''">product_category,</if>
+            <if test="productCoverImg != null and productCoverImg != ''">product_cover_img,</if>
+            <if test="productDetailImgs != null">product_detail_imgs,</if>
+            <if test="productDescription != null">product_description,</if>
+            <if test="productPrice != null">product_price,</if>
+            <if test="shippingMethod != null and shippingMethod != ''">shipping_method,</if>
+            <if test="salesCount != null">sales_count,</if>
+            <if test="productStatus != null">product_status,</if>
+            <if test="publisherId != null">publisher_id,</if>
+            <if test="publisherName != null">publisher_name,</if>
+            <if test="publisherPhone != null">publisher_phone,</if>
+            <if test="productRating != null">product_rating,</if>
+            <if test="shopName != null">shop_name,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="productTitle != null and productTitle != ''">#{productTitle},</if>
+            <if test="productCategory != null and productCategory != ''">#{productCategory},</if>
+            <if test="productCoverImg != null and productCoverImg != ''">#{productCoverImg},</if>
+            <if test="productDetailImgs != null">#{productDetailImgs},</if>
+            <if test="productDescription != null">#{productDescription},</if>
+            <if test="productPrice != null">#{productPrice},</if>
+            <if test="shippingMethod != null and shippingMethod != ''">#{shippingMethod},</if>
+            <if test="salesCount != null">#{salesCount},</if>
+            <if test="productStatus != null">#{productStatus},</if>
+            <if test="publisherId != null">#{publisherId},</if>
+            <if test="publisherName != null">#{publisherName},</if>
+            <if test="publisherPhone != null">#{publisherPhone},</if>
+            <if test="productRating != null">#{productRating},</if>
+            <if test="shopName != null">#{shopName},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAlseProduct" parameterType="AlseProduct">
+        update alse_product
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="productTitle != null and productTitle != ''">product_title = #{productTitle},</if>
+            <if test="productCategory != null and productCategory != ''">product_category = #{productCategory},</if>
+            <if test="productCoverImg != null and productCoverImg != ''">product_cover_img = #{productCoverImg},</if>
+            <if test="productDetailImgs != null">product_detail_imgs = #{productDetailImgs},</if>
+            <if test="productDescription != null">product_description = #{productDescription},</if>
+            <if test="productPrice != null">product_price = #{productPrice},</if>
+            <if test="shippingMethod != null and shippingMethod != ''">shipping_method = #{shippingMethod},</if>
+            <if test="salesCount != null">sales_count = #{salesCount},</if>
+            <if test="productStatus != null">product_status = #{productStatus},</if>
+            <if test="publisherId != null">publisher_id = #{publisherId},</if>
+            <if test="publisherName != null">publisher_name = #{publisherName},</if>
+            <if test="publisherPhone != null">publisher_phone = #{publisherPhone},</if>
+            <if test="productRating != null">product_rating = #{productRating},</if>
+            <if test="shopName != null">shop_name = #{shopName},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where product_id = #{productId}
+    </update>
+
+    <delete id="deleteAlseProductByProductId" parameterType="Long">
+        delete from alse_product where product_id = #{productId}
+    </delete>
+
+    <delete id="deleteAlseProductByProductIds" parameterType="String">
+        delete from alse_product where product_id in 
+        <foreach item="productId" collection="array" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+    </delete>
+</mapper>

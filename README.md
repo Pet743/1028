@@ -27,7 +27,7 @@
 
 1.  用户管理：用户是系统操作者，该功能主要完成系统用户配置。
 2.  部门管理：配置系统组织机构（公司、部门、小组），树结构展现支持数据权限。
-3.  岗位管理：配置系统用户所属担任职务。
+3.  岗位管理：配置系统用户所属担任职务。____
 4.  菜单管理：配置系统菜单，操作权限，按钮权限标识等。
 5.  角色管理：角色菜单权限分配、设置角色按机构进行数据范围权限划分。
 6.  字典管理：对系统中经常使用的一些较为固定的数据进行维护。
@@ -88,7 +88,116 @@
         <td><img src="https://oscimg.oschina.net/oscnet/up-5e4daac0bb59612c5038448acbcef235e3a.png"/></td>
     </tr>
 </table>
+// ===== 基础转换 =====
 
+// 字符串转BigDecimal
+BigDecimal amount1 = FinanceUtils.toBigDecimal("123.456");  // 123.46
+BigDecimal amount2 = FinanceUtils.toBigDecimal("¥1,234.56"); // 1234.56
+
+// 格式化输出
+String formatted1 = FinanceUtils.formatCNY(new BigDecimal("1234.56"));  // ¥1,234.56
+String formatted2 = FinanceUtils.formatUSD(new BigDecimal("1234.56"));  // $1,234.56
+String formatted3 = FinanceUtils.formatNumber(new BigDecimal("1234.56"));  // 1234.56
+
+// ===== 金额校验 =====
+
+// 字符串格式校验
+boolean valid1 = FinanceUtils.isValidMoneyString("123.45");  // true
+boolean valid2 = FinanceUtils.isValidMoneyString("abc");  // false
+
+// 金额范围校验
+boolean valid3 = FinanceUtils.isValidAmount(
+new BigDecimal("100"),
+FinanceUtils.MIN_AMOUNT,
+FinanceUtils.MAX_AMOUNT
+);  // true
+
+// ===== 数量校验 =====
+boolean validQty = FinanceUtils.isValidQuantity(10, 1, 100);  // true
+
+// ===== 基础运算 =====
+
+// 加法
+BigDecimal sum = FinanceUtils.add(
+new BigDecimal("100.25"),
+new BigDecimal("200.33")
+);  // 300.58
+
+// 乘法
+BigDecimal product = FinanceUtils.multiply(
+new BigDecimal("123.45"),
+new BigDecimal("0.8")
+);  // 98.76
+
+// ===== 业务计算 =====
+
+// 计算总价
+BigDecimal total = FinanceUtils.calculateTotal(
+new BigDecimal("9.99"),
+5
+);  // 49.95
+
+// 计算单价
+BigDecimal unitPrice = FinanceUtils.calculateUnitPrice(
+new BigDecimal("99.90"),
+10
+);  // 9.99
+
+// 计算佣金
+BigDecimal commission = FinanceUtils.calculateCommission(
+new BigDecimal("1000"),
+new BigDecimal("3.5")  // 3.5%
+);  // 35.00
+
+// 阶梯佣金计算
+List<CommissionTier> tiers = Arrays.asList(
+new CommissionTier(new BigDecimal("1000"), new BigDecimal("5")),  // 0-1000: 5%
+new CommissionTier(new BigDecimal("5000"), new BigDecimal("4")),  // 1001-5000: 4%
+new CommissionTier(new BigDecimal("10000"), new BigDecimal("3"))  // 5001+: 3%
+);
+BigDecimal tieredFee = FinanceUtils.calculateTieredCommission(
+new BigDecimal("2500"),
+tiers
+);  // 100.00 (2500 * 4%)
+
+// 按比例分配金额
+List<BigDecimal> ratios = Arrays.asList(
+new BigDecimal("0.3"),  // 30%
+new BigDecimal("0.5"),  // 50%
+new BigDecimal("0.2")   // 20%
+);
+List<BigDecimal> allocated = FinanceUtils.allocateByRatio(
+new BigDecimal("100"),
+ratios
+);  // [30.00, 50.00, 20.00]
+
+// 计算流水统计
+List<BigDecimal> transactions = Arrays.asList(
+new BigDecimal("100"),   // 收入
+new BigDecimal("-20"),   // 支出
+new BigDecimal("50"),    // 收入
+new BigDecimal("-10")    // 支出
+);
+TransactionStats stats = FinanceUtils.calculateTransactionStats(transactions);
+// stats.getIncome() = 150.00
+// stats.getExpense() = -30.00
+// stats.getBalance() = 120.00
+// stats.getCount() = 4
+
+// ===== Money对象操作 =====
+
+// 创建Money对象
+Money money1 = FinanceUtils.toMoney(new BigDecimal("123.45"));  // CNY 123.45
+Money money2 = FinanceUtils.toMoney(FinanceUtils.USD, new BigDecimal("45.67"));  // USD 45.67
+
+// Money对象加法
+Money moneySum = FinanceUtils.add(
+FinanceUtils.toMoney(new BigDecimal("100")),
+FinanceUtils.toMoney(new BigDecimal("200"))
+);  // CNY 300.00
+
+// 格式化Money对象
+String moneyStr = FinanceUtils.format(moneySum);  // ¥300.00
 
 ## 若依前后端分离交流群
 

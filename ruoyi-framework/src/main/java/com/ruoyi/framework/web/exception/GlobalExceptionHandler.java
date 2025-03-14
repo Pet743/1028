@@ -1,6 +1,8 @@
 package com.ruoyi.framework.web.exception;
 
 import javax.servlet.http.HttpServletRequest;
+
+import com.ruoyi.common.exception.TokenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -29,6 +31,16 @@ public class GlobalExceptionHandler
 {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+
+    /**
+     * 处理 Token 异常
+     */
+    @ExceptionHandler(TokenException.class)
+    public AjaxResult handleTokenException(TokenException e, HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        log.error("请求地址'{}',发生Token异常: {}", requestURI, e.getMessage());
+        return AjaxResult.error(HttpStatus.UNAUTHORIZED, "Token 校验失败：" + e.getMessage());
+    }
     /**
      * 权限校验异常
      */
