@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.alse.mapper.AlseUserMapper">
+    
+    <resultMap type="AlseUser" id="AlseUserResult">
+        <result property="userId"    column="user_id"    />
+        <result property="username"    column="username"    />
+        <result property="password"    column="password"    />
+        <result property="nickname"    column="nickname"    />
+        <result property="phone"    column="phone"    />
+        <result property="email"    column="email"    />
+        <result property="realName"    column="real_name"    />
+        <result property="idCardNo"    column="id_card_no"    />
+        <result property="idCardFrontImg"    column="id_card_front_img"    />
+        <result property="idCardBackImg"    column="id_card_back_img"    />
+        <result property="avatar"    column="avatar"    />
+        <result property="paymentMethod"    column="payment_method"    />
+        <result property="paymentAccount"    column="payment_account"    />
+        <result property="totalIncome"    column="total_income"    />
+        <result property="totalExpense"    column="total_expense"    />
+        <result property="walletBalance"    column="wallet_balance"    />
+        <result property="points"    column="points"    />
+        <result property="redPackets"    column="red_packets"    />
+        <result property="favoriteProducts"    column="favorite_products"    />
+        <result property="browsingHistory"    column="browsing_history"    />
+        <result property="followedUserIds"    column="followed_user_ids"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectAlseUserVo">
+        select user_id, username, password, nickname, phone, email, real_name, id_card_no, id_card_front_img, id_card_back_img, avatar, payment_method, payment_account, total_income, total_expense, wallet_balance, points, red_packets, favorite_products, browsing_history, followed_user_ids, status, create_by, create_time, update_by, update_time, remark from alse_user
+    </sql>
+
+    <select id="selectAlseUserList" parameterType="AlseUser" resultMap="AlseUserResult">
+        <include refid="selectAlseUserVo"/>
+        <where>  
+            <if test="username != null  and username != ''"> and username like concat('%', #{username}, '%')</if>
+            <if test="password != null  and password != ''"> and password = #{password}</if>
+            <if test="nickname != null  and nickname != ''"> and nickname like concat('%', #{nickname}, '%')</if>
+            <if test="phone != null  and phone != ''"> and phone = #{phone}</if>
+            <if test="email != null  and email != ''"> and email = #{email}</if>
+            <if test="realName != null  and realName != ''"> and real_name like concat('%', #{realName}, '%')</if>
+            <if test="idCardNo != null  and idCardNo != ''"> and id_card_no = #{idCardNo}</if>
+            <if test="idCardFrontImg != null  and idCardFrontImg != ''"> and id_card_front_img = #{idCardFrontImg}</if>
+            <if test="idCardBackImg != null  and idCardBackImg != ''"> and id_card_back_img = #{idCardBackImg}</if>
+            <if test="avatar != null  and avatar != ''"> and avatar = #{avatar}</if>
+            <if test="paymentMethod != null "> and payment_method = #{paymentMethod}</if>
+            <if test="paymentAccount != null  and paymentAccount != ''"> and payment_account = #{paymentAccount}</if>
+            <if test="totalIncome != null "> and total_income = #{totalIncome}</if>
+            <if test="totalExpense != null "> and total_expense = #{totalExpense}</if>
+            <if test="walletBalance != null "> and wallet_balance = #{walletBalance}</if>
+            <if test="points != null "> and points = #{points}</if>
+            <if test="redPackets != null "> and red_packets = #{redPackets}</if>
+            <if test="favoriteProducts != null  and favoriteProducts != ''"> and favorite_products = #{favoriteProducts}</if>
+            <if test="browsingHistory != null  and browsingHistory != ''"> and browsing_history = #{browsingHistory}</if>
+            <if test="followedUserIds != null  and followedUserIds != ''"> and followed_user_ids = #{followedUserIds}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectAlseUserByUserId" parameterType="Long" resultMap="AlseUserResult">
+        <include refid="selectAlseUserVo"/>
+        where user_id = #{userId}
+    </select>
+
+    <insert id="insertAlseUser" parameterType="AlseUser" useGeneratedKeys="true" keyProperty="userId">
+        insert into alse_user
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="username != null and username != ''">username,</if>
+            <if test="password != null and password != ''">password,</if>
+            <if test="nickname != null">nickname,</if>
+            <if test="phone != null">phone,</if>
+            <if test="email != null">email,</if>
+            <if test="realName != null">real_name,</if>
+            <if test="idCardNo != null">id_card_no,</if>
+            <if test="idCardFrontImg != null">id_card_front_img,</if>
+            <if test="idCardBackImg != null">id_card_back_img,</if>
+            <if test="avatar != null">avatar,</if>
+            <if test="paymentMethod != null">payment_method,</if>
+            <if test="paymentAccount != null">payment_account,</if>
+            <if test="totalIncome != null">total_income,</if>
+            <if test="totalExpense != null">total_expense,</if>
+            <if test="walletBalance != null">wallet_balance,</if>
+            <if test="points != null">points,</if>
+            <if test="redPackets != null">red_packets,</if>
+            <if test="favoriteProducts != null">favorite_products,</if>
+            <if test="browsingHistory != null">browsing_history,</if>
+            <if test="followedUserIds != null">followed_user_ids,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="username != null and username != ''">#{username},</if>
+            <if test="password != null and password != ''">#{password},</if>
+            <if test="nickname != null">#{nickname},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="email != null">#{email},</if>
+            <if test="realName != null">#{realName},</if>
+            <if test="idCardNo != null">#{idCardNo},</if>
+            <if test="idCardFrontImg != null">#{idCardFrontImg},</if>
+            <if test="idCardBackImg != null">#{idCardBackImg},</if>
+            <if test="avatar != null">#{avatar},</if>
+            <if test="paymentMethod != null">#{paymentMethod},</if>
+            <if test="paymentAccount != null">#{paymentAccount},</if>
+            <if test="totalIncome != null">#{totalIncome},</if>
+            <if test="totalExpense != null">#{totalExpense},</if>
+            <if test="walletBalance != null">#{walletBalance},</if>
+            <if test="points != null">#{points},</if>
+            <if test="redPackets != null">#{redPackets},</if>
+            <if test="favoriteProducts != null">#{favoriteProducts},</if>
+            <if test="browsingHistory != null">#{browsingHistory},</if>
+            <if test="followedUserIds != null">#{followedUserIds},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAlseUser" parameterType="AlseUser">
+        update alse_user
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="username != null and username != ''">username = #{username},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="idCardNo != null">id_card_no = #{idCardNo},</if>
+            <if test="idCardFrontImg != null">id_card_front_img = #{idCardFrontImg},</if>
+            <if test="idCardBackImg != null">id_card_back_img = #{idCardBackImg},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="paymentMethod != null">payment_method = #{paymentMethod},</if>
+            <if test="paymentAccount != null">payment_account = #{paymentAccount},</if>
+            <if test="totalIncome != null">total_income = #{totalIncome},</if>
+            <if test="totalExpense != null">total_expense = #{totalExpense},</if>
+            <if test="walletBalance != null">wallet_balance = #{walletBalance},</if>
+            <if test="points != null">points = #{points},</if>
+            <if test="redPackets != null">red_packets = #{redPackets},</if>
+            <if test="favoriteProducts != null">favorite_products = #{favoriteProducts},</if>
+            <if test="browsingHistory != null">browsing_history = #{browsingHistory},</if>
+            <if test="followedUserIds != null">followed_user_ids = #{followedUserIds},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where user_id = #{userId}
+    </update>
+
+    <delete id="deleteAlseUserByUserId" parameterType="Long">
+        delete from alse_user where user_id = #{userId}
+    </delete>
+
+    <delete id="deleteAlseUserByUserIds" parameterType="String">
+        delete from alse_user where user_id in 
+        <foreach item="userId" collection="array" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </delete>
+</mapper>
