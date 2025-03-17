@@ -18,6 +18,7 @@ import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
 import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
+import com.ruoyi.uni.util.FinanceUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,14 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 商品订单Service业务层处理
- * 
+ *
  * @author ruoyi
  * @date 2025-03-14
  */
 @Service
 @Slf4j
-public class AlseOrderServiceImpl implements IAlseOrderService
-{
+public class AlseOrderServiceImpl implements IAlseOrderService {
     @Autowired
     private AlseOrderMapper alseOrderMapper;
 
@@ -86,8 +86,6 @@ public class AlseOrderServiceImpl implements IAlseOrderService
         if (order.getPaymentMethod() == PaymentMethodEnum.WALLET.getCode() &&
                 order.getWalletTransactionId() != null &&
                 order.getPaymentTime() != null) {
-
-            // 处理钱包退款
             processWalletRefund(order);
         }
 
@@ -138,8 +136,6 @@ public class AlseOrderServiceImpl implements IAlseOrderService
             if (buyer == null) {
                 throw new ServiceException("用户不存在");
             }
-
-            // 处理钱包支付
             processWalletPayment(order, buyer);
         }
 
@@ -275,13 +271,12 @@ public class AlseOrderServiceImpl implements IAlseOrderService
         // 4. 插入交易记录
         alseWalletTransactionService.insertAlseWalletTransaction(refundTransaction);
 
-        // 5. 更新用户钱包余额
-        buyer.setWalletBalance(buyer.getWalletBalance().add(order.getTotalAmount()));
-        buyer.setTotalExpense(buyer.getTotalExpense().subtract(order.getTotalAmount()));
+        // 5. 更新用户钱包余额（加回退款金额）
+        buyer.setWalletBalance(FinanceUtils.add(buyer.getWalletBalance(), order.getTotalAmount()));
+        buyer.setTotalExpense(FinanceUtils.subtract(buyer.getTotalExpense(), order.getTotalAmount()));
         buyer.setUpdateTime(DateUtils.getNowDate());
         buyer.setUpdateBy(buyer.getUsername());
 
-        // 更新数据库中的余额
         int result = alseUserService.updateAlseUser(buyer);
         if (result <= 0) {
             log.error("处理钱包退款失败：更新买家钱包余额失败，用户ID：{}", buyer.getUserId());
@@ -322,12 +317,11 @@ public class AlseOrderServiceImpl implements IAlseOrderService
         alseWalletTransactionService.insertAlseWalletTransaction(incomeTransaction);
 
         // 4. 更新卖家钱包余额和总收入
-        seller.setWalletBalance(seller.getWalletBalance().add(order.getTotalAmount()));
-        seller.setTotalIncome(seller.getTotalIncome().add(order.getTotalAmount()));
+        seller.setWalletBalance(FinanceUtils.add(seller.getWalletBalance(), order.getTotalAmount()));
+        seller.setTotalIncome(FinanceUtils.add(seller.getTotalIncome(), order.getTotalAmount()));
         seller.setUpdateTime(DateUtils.getNowDate());
         seller.setUpdateBy(seller.getUsername());
 
-        // 5. 更新数据库中的余额
         int result = alseUserService.updateAlseUser(seller);
         if (result <= 0) {
             log.error("处理卖家收入失败：更新卖家钱包余额失败，用户ID：{}", seller.getUserId());
@@ -342,18 +336,14 @@ public class AlseOrderServiceImpl implements IAlseOrderService
         if (productId == null || quantity == null || quantity <= 0) {
             return;
         }
-
         try {
-            // 查询商品
             AlseProduct product = alseProductService.selectAlseProductByProductId(productId);
             if (product != null) {
-                // 更新销售数量
                 product.setSalesCount(product.getSalesCount() + quantity.intValue());
                 alseProductService.updateAlseProduct(product);
             }
         } catch (Exception e) {
             log.error("更新商品销售数量失败，商品ID：{}，数量：{}", productId, quantity, e);
-            // 不影响主流程，仅记录日志
         }
     }
 
@@ -379,33 +369,28 @@ public class AlseOrderServiceImpl implements IAlseOrderService
         );
 
         // 2. 等待所有异步任务完成
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                userFuture, productFuture, addressFuture
-        );
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(userFuture, productFuture, addressFuture);
 
         try {
-            allFutures.get(); // 等待所有任务完成
+            allFutures.get();
 
             // 3. 获取异步任务结果
             AlseUser buyer = userFuture.get();
             AlseProduct product = productFuture.get();
             AlseUserAddress address = addressFuture.get();
 
-            // 4. 数据校验
             if (buyer == null) {
                 throw new ServiceException("用户不存在");
             }
-
             if (product == null) {
                 throw new ServiceException("商品不存在");
             }
-
             if (address == null || !address.getUserId().equals(userId)) {
                 throw new ServiceException("收货地址不存在或不属于当前用户");
             }
 
-            // 5. 计算订单金额
-            BigDecimal totalAmount = product.getProductPrice().multiply(new BigDecimal(requestDTO.getQuantity()));
+            // 5. 计算订单金额（使用 FinanceUtils.calculateTotal）
+            BigDecimal totalAmount = FinanceUtils.calculateTotal(product.getProductPrice(), requestDTO.getQuantity());
 
             // 6. 创建订单对象
             AlseOrder order = new AlseOrder();
@@ -507,15 +492,14 @@ public class AlseOrderServiceImpl implements IAlseOrderService
         // 4. 更新订单交易ID和支付时间
         order.setWalletTransactionId(transaction.getTransactionId());
         order.setPaymentTime(DateUtils.getNowDate());
-        order.setOrderStatus(OrderStatusEnum.PENDING_SHIPMENT.getCode()); // 更新状态为待发货
+        order.setOrderStatus(OrderStatusEnum.PENDING_SHIPMENT.getCode());
 
-        // 5. 更新用户钱包余额
-        buyer.setWalletBalance(buyer.getWalletBalance().subtract(order.getTotalAmount()));
-        buyer.setTotalExpense(buyer.getTotalExpense().add(order.getTotalAmount()));
+        // 5. 更新用户钱包余额（扣除支付金额）
+        buyer.setWalletBalance(FinanceUtils.subtract(buyer.getWalletBalance(), order.getTotalAmount()));
+        buyer.setTotalExpense(FinanceUtils.add(buyer.getTotalExpense(), order.getTotalAmount()));
         buyer.setUpdateTime(DateUtils.getNowDate());
         buyer.setUpdateBy(buyer.getUsername());
 
-        // 更新数据库中的余额
         int result = alseUserService.updateAlseUser(buyer);
         if (result <= 0) {
             throw new ServiceException("更新钱包余额失败，请稍后重试");
@@ -526,10 +510,8 @@ public class AlseOrderServiceImpl implements IAlseOrderService
      * 生成订单号
      */
     private String generateOrderNo() {
-        // 格式：时间戳 + 4位随机数
         String timestamp = String.valueOf(System.currentTimeMillis());
         String random = String.valueOf(1000 + (int)(Math.random() * 9000));
-
         return timestamp + random;
     }
 
@@ -538,25 +520,19 @@ public class AlseOrderServiceImpl implements IAlseOrderService
      */
     @Override
     public List<OrderResponseDTO> getOrderListByStatus(Long userId, Integer orderStatus, Integer pageNum, Integer pageSize) {
-        // 参数校验
         if (orderStatus == null || orderStatus < 0) {
             orderStatus = OrderStatusEnum.ALL.getCode();
         }
 
-        // 构建查询条件
         AlseOrder queryParam = new AlseOrder();
         queryParam.setBuyerId(userId);
 
-        // 如果不是查询全部，设置订单状态
         if (orderStatus != OrderStatusEnum.ALL.getCode()) {
             queryParam.setOrderStatus(orderStatus);
         }
 
-        // 分页查询
         PageHelper.startPage(pageNum, pageSize);
         List<AlseOrder> orderList = alseOrderMapper.selectAlseOrderList(queryParam);
-
-        // 转换结果
         return OrderConverter.convertToOrderResponseDTOList(orderList);
     }
 
@@ -565,95 +541,81 @@ public class AlseOrderServiceImpl implements IAlseOrderService
      */
     @Override
     public OrderDetailResponseDTO getOrderDetail(Long orderId, Long userId) {
-        // 查询订单
         AlseOrder order = alseOrderMapper.selectAlseOrderByOrderId(orderId);
-
-        // 校验订单是否存在
         if (order == null) {
             throw new ServiceException("订单不存在");
         }
-
-        // 校验订单是否属于当前用户
         if (!order.getBuyerId().equals(userId) && !order.getSellerId().equals(userId)) {
             throw new ServiceException("无权查看该订单");
         }
-
-        // 转换为DTO并返回
         return OrderConverter.convertToOrderDetailResponseDTO(order);
     }
 
-
     /**
      * 查询商品订单
-     * 
+     *
      * @param orderId 商品订单主键
      * @return 商品订单
      */
     @Override
-    public AlseOrder selectAlseOrderByOrderId(Long orderId)
-    {
+    public AlseOrder selectAlseOrderByOrderId(Long orderId) {
         return alseOrderMapper.selectAlseOrderByOrderId(orderId);
     }
 
     /**
      * 查询商品订单列表
-     * 
+     *
      * @param alseOrder 商品订单
      * @return 商品订单
      */
     @Override
-    public List<AlseOrder> selectAlseOrderList(AlseOrder alseOrder)
-    {
+    public List<AlseOrder> selectAlseOrderList(AlseOrder alseOrder) {
         return alseOrderMapper.selectAlseOrderList(alseOrder);
     }
 
     /**
      * 新增商品订单
-     * 
+     *
      * @param alseOrder 商品订单
      * @return 结果
      */
     @Override
-    public int insertAlseOrder(AlseOrder alseOrder)
-    {
+    public int insertAlseOrder(AlseOrder alseOrder) {
         alseOrder.setCreateTime(DateUtils.getNowDate());
         return alseOrderMapper.insertAlseOrder(alseOrder);
     }
 
     /**
      * 修改商品订单
-     * 
+     *
      * @param alseOrder 商品订单
      * @return 结果
      */
     @Override
-    public int updateAlseOrder(AlseOrder alseOrder)
-    {
+    public int updateAlseOrder(AlseOrder alseOrder) {
         alseOrder.setUpdateTime(DateUtils.getNowDate());
         return alseOrderMapper.updateAlseOrder(alseOrder);
     }
 
     /**
      * 批量删除商品订单
-     * 
+     *
      * @param orderIds 需要删除的商品订单主键
      * @return 结果
      */
     @Override
-    public int deleteAlseOrderByOrderIds(Long[] orderIds)
-    {
+    public int deleteAlseOrderByOrderIds(Long[] orderIds) {
         return alseOrderMapper.deleteAlseOrderByOrderIds(orderIds);
     }
 
     /**
      * 删除商品订单信息
-     * 
+     *
      * @param orderId 商品订单主键
      * @return 结果
      */
     @Override
-    public int deleteAlseOrderByOrderId(Long orderId)
-    {
+    public int deleteAlseOrderByOrderId(Long orderId) {
         return alseOrderMapper.deleteAlseOrderByOrderId(orderId);
     }
 }

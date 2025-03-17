@@ -7,7 +7,7 @@ import com.ruoyi.alse.domain.AlseUser;
  * 用户Mapper接口
  * 
  * @author ruoyi
- * @date 2025-03-10
+ * @date 2025-03-14
  */
 public interface AlseUserMapper 
 {

@@ -145,6 +145,21 @@ public class FinanceUtils {
     }
 
     /**
+     * 规范化金额(两位小数)，支持传入 String 类型
+     */
+    public static BigDecimal normalizeAmount(String amountStr) {
+        if (amountStr == null || amountStr.trim().isEmpty()) {
+            return ZERO;
+        }
+        try {
+            BigDecimal amount = new BigDecimal(amountStr);
+            return normalizeAmount(amount);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("无效的金额格式: " + amountStr, e);
+        }
+    }
+
+    /**
      * 规范化金额(指定小数位)
      */
     public static BigDecimal normalizeAmount(BigDecimal amount, int scale) {
@@ -395,11 +410,11 @@ public class FinanceUtils {
     /**
      * 计算总金额(单价 x 数量)
      */
-    public static BigDecimal calculateTotal(BigDecimal unitPrice, int quantity) {
+    public static BigDecimal calculateTotal(BigDecimal unitPrice, long quantity) {
         if (unitPrice == null || quantity <= 0) {
             return ZERO;
         }
-        return multiply(unitPrice, quantity);
+        return multiply(unitPrice, BigDecimal.valueOf(quantity));
     }
 
     /**

@@ -47,6 +47,18 @@
             <groupId>org.joda</groupId>
             <artifactId>joda-money</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-easysdk</artifactId>
+            <version>${alipay-easysd-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>${alipay-sdk-java-version}</version>
+        </dependency>
     </dependencies>
 
 </project>

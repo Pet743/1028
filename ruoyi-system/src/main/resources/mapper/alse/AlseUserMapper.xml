@@ -18,6 +18,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="avatar"    column="avatar"    />
         <result property="paymentMethod"    column="payment_method"    />
         <result property="paymentAccount"    column="payment_account"    />
+        <result property="paymentMethodIds"    column="payment_method_ids"    />
         <result property="totalIncome"    column="total_income"    />
         <result property="totalExpense"    column="total_expense"    />
         <result property="walletBalance"    column="wallet_balance"    />
@@ -35,7 +36,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectAlseUserVo">
-        select user_id, username, password, nickname, phone, email, real_name, id_card_no, id_card_front_img, id_card_back_img, avatar, payment_method, payment_account, total_income, total_expense, wallet_balance, points, red_packets, favorite_products, browsing_history, followed_user_ids, status, create_by, create_time, update_by, update_time, remark from alse_user
+        select user_id, username, password, nickname, phone, email, real_name, id_card_no, id_card_front_img, id_card_back_img, avatar, payment_method, payment_account, payment_method_ids, total_income, total_expense, wallet_balance, points, red_packets, favorite_products, browsing_history, followed_user_ids, status, create_by, create_time, update_by, update_time, remark from alse_user
     </sql>
 
     <select id="selectAlseUserList" parameterType="AlseUser" resultMap="AlseUserResult">
@@ -53,6 +54,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="avatar != null  and avatar != ''"> and avatar = #{avatar}</if>
             <if test="paymentMethod != null "> and payment_method = #{paymentMethod}</if>
             <if test="paymentAccount != null  and paymentAccount != ''"> and payment_account = #{paymentAccount}</if>
+            <if test="paymentMethodIds != null  and paymentMethodIds != ''"> and payment_method_ids = #{paymentMethodIds}</if>
             <if test="totalIncome != null "> and total_income = #{totalIncome}</if>
             <if test="totalExpense != null "> and total_expense = #{totalExpense}</if>
             <if test="walletBalance != null "> and wallet_balance = #{walletBalance}</if>
@@ -85,6 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="avatar != null">avatar,</if>
             <if test="paymentMethod != null">payment_method,</if>
             <if test="paymentAccount != null">payment_account,</if>
+            <if test="paymentMethodIds != null">payment_method_ids,</if>
             <if test="totalIncome != null">total_income,</if>
             <if test="totalExpense != null">total_expense,</if>
             <if test="walletBalance != null">wallet_balance,</if>
@@ -113,6 +116,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="avatar != null">#{avatar},</if>
             <if test="paymentMethod != null">#{paymentMethod},</if>
             <if test="paymentAccount != null">#{paymentAccount},</if>
+            <if test="paymentMethodIds != null">#{paymentMethodIds},</if>
             <if test="totalIncome != null">#{totalIncome},</if>
             <if test="totalExpense != null">#{totalExpense},</if>
             <if test="walletBalance != null">#{walletBalance},</if>
@@ -145,6 +149,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="avatar != null">avatar = #{avatar},</if>
             <if test="paymentMethod != null">payment_method = #{paymentMethod},</if>
             <if test="paymentAccount != null">payment_account = #{paymentAccount},</if>
+            <if test="paymentMethodIds != null">payment_method_ids = #{paymentMethodIds},</if>
             <if test="totalIncome != null">total_income = #{totalIncome},</if>
             <if test="totalExpense != null">total_expense = #{totalExpense},</if>
             <if test="walletBalance != null">wallet_balance = #{walletBalance},</if>

@@ -10,7 +10,7 @@ import com.ruoyi.common.core.domain.BaseEntity;
  * 用户对象 alse_user
  * 
  * @author ruoyi
- * @date 2025-03-10
+ * @date 2025-03-14
  */
 public class AlseUser extends BaseEntity
 {
@@ -59,13 +59,17 @@ public class AlseUser extends BaseEntity
     @Excel(name = "用户头像路径")
     private String avatar;
 
-    /** 收款方式(1:支付宝 2:微信 3:银行卡) */
-    @Excel(name = "收款方式(1:支付宝 2:微信 3:银行卡)")
+    /** 默认收款方式(1:支付宝 2:微信 3:银行卡) */
+    @Excel(name = "默认收款方式(1:支付宝 2:微信 3:银行卡)")
     private Integer paymentMethod;
 
-    /** 收款账号 */
-    @Excel(name = "收款账号")
+    /** 默认收款账号信息 */
+    @Excel(name = "默认收款账号信息")
     private String paymentAccount;
+
+    /** 绑定的收款方式(JSON格式） */
+    @Excel(name = "绑定的收款方式(JSON格式）")
+    private String paymentMethodIds;
 
     /** 总收入 */
     @Excel(name = "总收入")
@@ -233,6 +237,16 @@ public class AlseUser extends BaseEntity
         return paymentAccount;
     }
 
+    public void setPaymentMethodIds(String paymentMethodIds) 
+    {
+        this.paymentMethodIds = paymentMethodIds;
+    }
+
+    public String getPaymentMethodIds() 
+    {
+        return paymentMethodIds;
+    }
+
     public void setTotalIncome(BigDecimal totalIncome) 
     {
         this.totalIncome = totalIncome;
@@ -339,6 +353,7 @@ public class AlseUser extends BaseEntity
             .append("avatar", getAvatar())
             .append("paymentMethod", getPaymentMethod())
             .append("paymentAccount", getPaymentAccount())
+            .append("paymentMethodIds", getPaymentMethodIds())
             .append("totalIncome", getTotalIncome())
             .append("totalExpense", getTotalExpense())
             .append("walletBalance", getWalletBalance())
