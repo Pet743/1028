@@ -5,8 +5,11 @@ import com.alipay.api.AlipayClient;
 import com.alipay.api.AlipayConfig;
 import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.domain.*;
+import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.request.AlipayTradeWapPayRequest;
+import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.alipay.api.response.AlipayTradeWapPayResponse;
+import com.ruoyi.alse.service.IAlseOrderService;
 import com.ruoyi.uni.config.AlipayProperties;
 import com.ruoyi.uni.converter.PaymentConverter;
 
@@ -24,6 +27,40 @@ public class PaymentService {
 
     @Autowired
     private AlipayProperties alipayProperties;
+
+
+    @Autowired
+    private IAlseOrderService orderService;
+
+
+    /**
+     * 查询支付宝订单支付状态
+     *
+     * @param outTradeNo 商户订单号
+     * @return 支付宝响应
+     * @throws AlipayApiException 调用支付宝接口异常时抛出
+     */
+    public AlipayTradeQueryResponse queryAlipayOrderStatus(String outTradeNo) throws AlipayApiException {
+        log.info("开始查询支付宝订单状态，商户订单号：{}", outTradeNo);
+
+        // 初始化SDK
+        AlipayClient alipayClient = new DefaultAlipayClient(getAlipayConfig());
+
+        // 构造请求参数以调用接口
+        AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
+        AlipayTradeQueryModel model = new AlipayTradeQueryModel();
+
+        // 设置订单支付时传入的商户订单号
+        model.setOutTradeNo(outTradeNo);
+
+        request.setBizModel(model);
+
+        // 执行查询
+        AlipayTradeQueryResponse response = alipayClient.execute(request);
+        log.info("支付宝订单查询结果：{}", response.getBody());
+
+        return response;
+    }
 
     /**
      * 处理支付请求并返回支付URL：
@@ -57,6 +94,7 @@ public class PaymentService {
         // 设置回调地址
         request.setReturnUrl(alipayProperties.getReturnUrl());
         request.setNotifyUrl(alipayProperties.getNotifyUrl());
+        orderService.createVirtualOrder(paymentModel.getOutTradeNo(), FinanceUtils.toBigDecimal(paymentModel.getTotalAmount()));
 
         // 构造业务参数JSON
         String bizContent = String.format(

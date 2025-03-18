@@ -1,5 +1,6 @@
 package com.ruoyi.alse.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.ruoyi.alse.domain.AlseOrder;
 import com.ruoyi.uni.model.DTO.request.order.CreateOrderRequestDTO;
@@ -16,6 +17,26 @@ import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
  */
 public interface IAlseOrderService
 {
+
+    /**
+     * 查询最近一段时间内的待支付订单
+     *
+     * @param minutes 分钟数，例如30表示近30分钟内
+     * @return 订单列表
+     */
+    public List<AlseOrder> getRecentOrders(int minutes);
+
+
+    /**
+     * 根据金额和订单号创建虚拟商品订单
+     * 支付回调时，通过订单号和金额创建订单记录
+     *
+     * @param outTradeNo 订单号
+     * @param totalAmount 支付金额
+     * @return 创建的订单对象
+     */
+    public AlseOrder createVirtualOrder(String outTradeNo, BigDecimal totalAmount);
+
     /**
      * 取消订单
      *

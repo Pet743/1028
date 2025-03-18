@@ -1,15 +1,23 @@
 package com.ruoyi.alse.service.impl;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.AlipayConfig;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.domain.AlipayTradeQueryModel;
+import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.alse.domain.*;
 import com.ruoyi.alse.service.*;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.uni.config.AlipayProperties;
 import com.ruoyi.uni.converter.OrderConverter;
 import com.ruoyi.uni.model.DTO.request.order.CreateOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
@@ -49,6 +57,146 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
 
     @Autowired
     private IAlseWalletTransactionService alseWalletTransactionService;
+
+    /**
+     * 查询最近一段时间内的待支付订单
+     *
+     * @param minutes 分钟数，例如30表示近30分钟
+     * @return 订单列表
+     */
+    @Override
+    public List<AlseOrder> getRecentOrders(int minutes) {
+        log.info("查询最近{}分钟内的待支付订单", minutes);
+
+        // 计算过去N分钟的时间点
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.MINUTE, -minutes);
+        Date startTime = calendar.getTime();
+
+        // 构造查询条件
+        AlseOrder queryParam = new AlseOrder();
+
+        // 设置时间范围参数
+        Map<String, Object> params = new HashMap<>();
+        params.put("beginCreateTime", DateUtils.parseDateToStr("yyyy-MM-dd HH:mm:ss", startTime));
+        queryParam.setParams(params);
+
+        // 设置订单状态为待付款
+        queryParam.setOrderStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
+
+        // 执行查询
+        List<AlseOrder> orderList = alseOrderMapper.selectAlseOrderList(queryParam);
+
+        log.info("查询到最近{}分钟内的待支付订单数量：{}", minutes, orderList.size());
+
+        return orderList;
+    }
+
+
+    /**
+     * 根据金额和订单号创建虚拟商品订单
+     * 支付回调时，通过订单号和金额创建订单记录
+     *
+     * @param outTradeNo 订单号
+     * @param totalAmount 支付金额
+     * @return 创建的订单对象
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public AlseOrder createVirtualOrder(String outTradeNo, BigDecimal totalAmount) {
+        log.info("开始创建虚拟订单，订单号：{}，支付金额：{}", outTradeNo, totalAmount);
+
+        // 1. 创建订单对象
+        AlseOrder order = new AlseOrder();
+        order.setOrderNo(outTradeNo);
+
+        // 2. 生成随机商品ID和名称
+        Long productId = generateRandomProductId();
+        String productName = generateRandomProductName();
+
+        // 3. 设置商品信息
+        order.setProductId(productId);
+        order.setProductName(productName);
+        // 使用一个可访问的商品图片URL
+        order.setProductImageUrl("https://img.alicdn.com/bao/uploaded/i1/O1CN019LU4rQ1JtjU5nPPO8_!!6000000001086-0-yinhe.jpg");
+
+        // 4. 设置价格信息 - 商品单价设置为接近总金额的整数
+        BigDecimal productPrice = new BigDecimal(totalAmount.intValue());
+        order.setProductPrice(productPrice);
+
+        // 5. 设置购买数量和总金额
+        // 数量设为1，总金额为传入的实际支付金额
+        order.setQuantity(1L);
+        order.setTotalAmount(totalAmount);
+
+        // 6. 设置支付方式为支付宝(1)
+        order.setPaymentMethod(1); // 支付宝
+
+        // 7. 设置随机买家和卖家信息
+        order.setBuyerId(generateRandomUserId());
+        order.setBuyerName("买家_" + order.getBuyerId());
+        order.setBuyerPhone("1888888" + (1000 + new java.util.Random().nextInt(9000)));
+
+        order.setSellerId(generateRandomUserId());
+        order.setSellerName("卖家_" + order.getSellerId());
+        order.setSellerPhone("1999999" + (1000 + new java.util.Random().nextInt(9000)));
+
+        // 8. 设置订单状态为已支付(待发货)
+        order.setOrderStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
+
+        // 9. 设置随机店铺信息
+        order.setShopName("商店_" + (100 + new java.util.Random().nextInt(900)));
+
+        // 10. 设置收货地址
+        order.setShippingAddress("北京市朝阳区XX路XX号");
+
+        // 11. 设置支付时间
+        order.setPaymentTime(DateUtils.getNowDate());
+
+        // 12. 设置通用字段
+        order.setStatus("0"); // 正常状态
+        order.setCreateBy("system");
+        order.setCreateTime(DateUtils.getNowDate());
+        order.setUpdateBy("system");
+        order.setUpdateTime(DateUtils.getNowDate());
+        order.setRemark("下单时预付款订单");
+
+        // 13. 保存订单
+        alseOrderMapper.insertAlseOrder(order);
+
+        log.info("虚拟订单创建成功，订单ID：{}", order.getOrderId());
+        return order;
+    }
+
+    /**
+     * 生成随机商品ID
+     */
+    private Long generateRandomProductId() {
+        return 100000L + new java.util.Random().nextInt(900000);
+    }
+
+    /**
+     * 生成随机用户ID
+     */
+    private Long generateRandomUserId() {
+        return 10000L + new java.util.Random().nextInt(90000);
+    }
+
+    /**
+     * 生成随机商品名称
+     */
+    private String generateRandomProductName() {
+        String[] prefixes = {"高级", "豪华", "精品", "优质", "时尚"};
+        String[] products = {"手机", "电脑", "耳机", "手表", "相机", "平板", "音箱"};
+        String[] suffixes = {"Pro", "Max", "Ultra", "Plus", "Elite"};
+
+        java.util.Random random = new java.util.Random();
+        String prefix = prefixes[random.nextInt(prefixes.length)];
+        String product = products[random.nextInt(products.length)];
+        String suffix = suffixes[random.nextInt(suffixes.length)];
+
+        return prefix + product + " " + suffix;
+    }
+
 
     /**
      * 取消订单

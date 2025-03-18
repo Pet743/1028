@@ -41,7 +41,7 @@ public class PaymentConverter {
 
         // 可选字段：如 auth_token、quit_url、time_expire 等，可根据实际需要扩展处理，此处均保持为空
         // model.setAuthToken(null);
-         model.setQuitUrl("http://www.taobao.com/product/113714.html");
+         model.setQuitUrl("https://1w1w1.com/juhe.html");
         // model.setTimeExpire(null);
         // model.setBusinessParams(null);
         // model.setPassbackParams(null);
