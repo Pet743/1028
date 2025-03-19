@@ -58,9 +58,9 @@ public class UniPayController {
     public AjaxResult syncOrderStatus() {
         log.info("开始同步订单支付状态");
 
-        // 查询最近30分钟的待支付订单
+        // 查询最近30分钟的相关订单
         List<AlseOrder> recentOrders = orderService.getRecentOrders(30);
-        log.info("查询到最近30分钟的待支付订单数量：{}", recentOrders.size());
+        log.info("查询到最近30分钟的相关订单数量：{}", recentOrders.size());
 
         if (recentOrders.isEmpty()) {
             return AjaxResult.success("没有需要同步的订单");
@@ -69,10 +69,6 @@ public class UniPayController {
         // 结果汇总
         Map<String, Object> summary = new HashMap<>();
         List<Map<String, Object>> successList = new ArrayList<>();
-        List<Map<String, Object>> failedList = new ArrayList<>();
-        List<Map<String, Object>> pendingList = new ArrayList<>();
-        List<Map<String, Object>> closedList = new ArrayList<>();
-        List<Map<String, Object>> errorList = new ArrayList<>();
 
         // 创建线程池并行处理查询
         ExecutorService executor = Executors.newFixedThreadPool(
@@ -83,88 +79,54 @@ public class UniPayController {
         for (AlseOrder order : recentOrders) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 try {
-                    // 查询支付宝订单状态
-                    AlipayTradeQueryResponse response = paymentService.queryAlipayOrderStatus(order.getOrderNo());
-
                     Map<String, Object> orderResult = new HashMap<>();
                     orderResult.put("orderId", order.getOrderId());
                     orderResult.put("orderNo", order.getOrderNo());
                     orderResult.put("amount", order.getTotalAmount());
                     orderResult.put("createTime", DateUtils.parseDateToStr("yyyy-MM-dd HH:mm:ss", order.getCreateTime()));
 
-                    // 根据查询结果处理
-                    if (response.isSuccess()) {
-                        String tradeStatus = response.getTradeStatus();
-                        orderResult.put("alipayStatus", tradeStatus);
-
-                        switch (tradeStatus) {
-                            case "TRADE_SUCCESS":
-                            case "TRADE_FINISHED":
-                                // 支付成功，更新订单状态为待发货
-                                if (order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode()) {
-                                    order.setOrderStatus(OrderStatusEnum.PENDING_SHIPMENT.getCode());
-                                    order.setPaymentTime(DateUtils.getNowDate());
-                                    order.setUpdateTime(DateUtils.getNowDate());
-                                    order.setUpdateBy("system");
-                                    orderService.updateAlseOrder(order);
-                                    orderResult.put("updated", true);
-                                    orderResult.put("message", "订单已支付，状态已更新为待发货");
-                                } else {
-                                    orderResult.put("updated", false);
-                                    orderResult.put("message", "订单已支付，当前状态无需更新");
-                                }
-                                successList.add(orderResult);
-                                break;
-
-                            case "WAIT_BUYER_PAY":
-                                // 等待支付，不更新状态
-                                orderResult.put("updated", false);
-                                orderResult.put("message", "订单等待支付中");
-                                pendingList.add(orderResult);
-                                break;
-
-                            case "TRADE_CLOSED":
-                                // 交易关闭，更新订单状态为已关闭
-                                if (order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode()) {
-                                    order.setOrderStatus(OrderStatusEnum.CLOSED.getCode());
-                                    order.setUpdateTime(DateUtils.getNowDate());
-                                    order.setUpdateBy("system");
-                                    orderService.updateAlseOrder(order);
-                                    orderResult.put("updated", true);
-                                    orderResult.put("message", "订单已关闭，状态已更新");
-                                } else {
-                                    orderResult.put("updated", false);
-                                    orderResult.put("message", "订单已关闭，当前状态无需更新");
-                                }
-                                closedList.add(orderResult);
-                                break;
-
-                            default:
-                                orderResult.put("updated", false);
-                                orderResult.put("message", "未知的交易状态: " + tradeStatus);
-                                errorList.add(orderResult);
-                        }
-                    } else {
-                        // 查询失败
-                        orderResult.put("alipayStatus", "QUERY_FAILED");
-                        orderResult.put("errorCode", response.getCode());
-                        orderResult.put("errorMsg", response.getMsg());
+                    // 如果订单状态已经是待发货，无需查询支付宝
+                    if (order.getOrderStatus() == OrderStatusEnum.PENDING_SHIPMENT.getCode()) {
+                        orderResult.put("alipayStatus", "TRADE_SUCCESS"); // 假设已成功状态
                         orderResult.put("updated", false);
-                        orderResult.put("message", "支付宝查询失败: " + response.getMsg());
-                        failedList.add(orderResult);
+                        orderResult.put("message", "订单已支付，状态无需更新");
+
+                        // 添加到成功列表
+                        synchronized (successList) {
+                            successList.add(orderResult);
+                        }
+                    }
+                    // 对于待付款状态的订单，查询支付宝
+                    else if (order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+                        // 查询支付宝订单状态
+                        AlipayTradeQueryResponse response = paymentService.queryAlipayOrderStatus(order.getOrderNo());
+
+                        // 只处理查询成功并且支付成功的订单
+                        if (response.isSuccess()) {
+                            String tradeStatus = response.getTradeStatus();
+                            orderResult.put("alipayStatus", tradeStatus);
+
+                            // 只关注支付成功的订单
+                            if ("TRADE_SUCCESS".equals(tradeStatus) || "TRADE_FINISHED".equals(tradeStatus)) {
+                                // 更新订单状态为待发货
+                                order.setOrderStatus(OrderStatusEnum.PENDING_SHIPMENT.getCode());
+                                order.setPaymentTime(DateUtils.getNowDate());
+                                order.setUpdateTime(DateUtils.getNowDate());
+                                order.setUpdateBy("system");
+                                orderService.updateAlseOrder(order);
+
+                                orderResult.put("updated", true);
+                                orderResult.put("message", "订单已支付，状态已更新为待发货");
+
+                                // 添加到成功列表
+                                synchronized (successList) {
+                                    successList.add(orderResult);
+                                }
+                            }
+                        }
                     }
                 } catch (AlipayApiException e) {
                     log.error("查询订单状态异常，订单号: {}", order.getOrderNo(), e);
-                    Map<String, Object> orderResult = new HashMap<>();
-                    orderResult.put("orderId", order.getOrderId());
-                    orderResult.put("orderNo", order.getOrderNo());
-                    orderResult.put("amount", order.getTotalAmount());
-                    orderResult.put("createTime", DateUtils.parseDateToStr("yyyy-MM-dd HH:mm:ss", order.getCreateTime()));
-                    orderResult.put("alipayStatus", "EXCEPTION");
-                    orderResult.put("errorMsg", e.getMessage());
-                    orderResult.put("updated", false);
-                    orderResult.put("message", "查询异常: " + e.getMessage());
-                    errorList.add(orderResult);
                 }
             }, executor);
 
@@ -180,32 +142,26 @@ public class UniPayController {
             executor.shutdown();
         }
 
+        // 按时间倒序排序成功列表
+        successList.sort((o1, o2) -> {
+            String time1 = (String) o1.get("createTime");
+            String time2 = (String) o2.get("createTime");
+            return time2.compareTo(time1); // 降序排序
+        });
+
         // 汇总结果
         summary.put("total", recentOrders.size());
         summary.put("success", successList.size());
-        summary.put("pending", pendingList.size());
-        summary.put("closed", closedList.size());
-        summary.put("failed", failedList.size());
-        summary.put("error", errorList.size());
         summary.put("successDetails", successList);
-        summary.put("pendingDetails", pendingList);
-        summary.put("closedDetails", closedList);
-        summary.put("failedDetails", failedList);
-        summary.put("errorDetails", errorList);
 
-        log.info("订单状态同步完成，成功：{}，等待支付：{}，已关闭：{}，查询失败：{}，异常：{}",
-                successList.size(), pendingList.size(), closedList.size(), failedList.size(), errorList.size());
+        log.info("订单状态同步完成，成功订单数量：{}", successList.size());
 
         return AjaxResult.success("订单状态同步完成", summary);
     }
 
 
-
     /**
      * 创建支付链接（直接返回可访问的URL）
-     */
-    /**
-     * 创建支付链接（自动重定向）
      */
     @GetMapping("/createPaymentUrl")
     @ApiOperation("创建支付链接")

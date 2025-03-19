@@ -4,20 +4,12 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-
-import com.alipay.api.AlipayApiException;
-import com.alipay.api.AlipayClient;
-import com.alipay.api.AlipayConfig;
-import com.alipay.api.DefaultAlipayClient;
-import com.alipay.api.domain.AlipayTradeQueryModel;
-import com.alipay.api.request.AlipayTradeQueryRequest;
-import com.alipay.api.response.AlipayTradeQueryResponse;
+import java.util.stream.Collectors;
 import com.github.pagehelper.PageHelper;
 import com.ruoyi.alse.domain.*;
 import com.ruoyi.alse.service.*;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
-import com.ruoyi.uni.config.AlipayProperties;
 import com.ruoyi.uni.converter.OrderConverter;
 import com.ruoyi.uni.model.DTO.request.order.CreateOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
@@ -43,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Slf4j
 public class AlseOrderServiceImpl implements IAlseOrderService {
+
     @Autowired
     private AlseOrderMapper alseOrderMapper;
 
@@ -80,16 +73,18 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         Map<String, Object> params = new HashMap<>();
         params.put("beginCreateTime", DateUtils.parseDateToStr("yyyy-MM-dd HH:mm:ss", startTime));
         queryParam.setParams(params);
-
-        // 设置订单状态为待付款
-        queryParam.setOrderStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
-
-        // 执行查询
+        // 执行查询获取所有订单
         List<AlseOrder> orderList = alseOrderMapper.selectAlseOrderList(queryParam);
-
-        log.info("查询到最近{}分钟内的待支付订单数量：{}", minutes, orderList.size());
-
-        return orderList;
+        // 过滤只保留待付款和待发货的订单
+        List<AlseOrder> filteredList = orderList.stream()
+                .filter(order ->
+                        order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode() ||
+                                order.getOrderStatus() == OrderStatusEnum.PENDING_SHIPMENT.getCode())
+                .collect(Collectors.toList());
+        // 按创建时间降序排序（最新的在前面）
+        filteredList.sort(Comparator.comparing(AlseOrder::getCreateTime).reversed());
+        log.info("查询到最近{}分钟内的相关订单（待付款和待发货）数量：{}", minutes, filteredList.size());
+        return filteredList;
     }
 
 
@@ -97,7 +92,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      * 根据金额和订单号创建虚拟商品订单
      * 支付回调时，通过订单号和金额创建订单记录
      *
-     * @param outTradeNo 订单号
+     * @param outTradeNo  订单号
      * @param totalAmount 支付金额
      * @return 创建的订单对象
      */
@@ -659,7 +654,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      */
     private String generateOrderNo() {
         String timestamp = String.valueOf(System.currentTimeMillis());
-        String random = String.valueOf(1000 + (int)(Math.random() * 9000));
+        String random = String.valueOf(1000 + (int) (Math.random() * 9000));
         return timestamp + random;
     }
 

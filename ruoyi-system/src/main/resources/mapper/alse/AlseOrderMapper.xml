@@ -77,8 +77,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="paymentTime != null "> and payment_time = #{paymentTime}</if>
             <if test="shippingTime != null "> and shipping_time = #{shippingTime}</if>
             <if test="receivingTime != null "> and receiving_time = #{receivingTime}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="params.beginCreateTime != null and params.beginCreateTime != ''"> and create_time &gt;= #{params.beginCreateTime}</if>
+            <if test="params.endCreateTime != null and params.endCreateTime != ''"> and create_time &lt;= #{params.endCreateTime}</if>
         </where>
+        order by create_time desc
     </select>
     
     <select id="selectAlseOrderByOrderId" parameterType="Long" resultMap="AlseOrderResult">

@@ -23,7 +23,7 @@ import com.ruoyi.framework.config.ServerConfig;
 
 /**
  * 通用请求处理
- * 
+ *
  * @author ruoyi
  */
 @RestController
@@ -39,7 +39,7 @@ public class CommonController
 
     /**
      * 通用下载请求
-     * 
+     *
      * @param fileName 文件名称
      * @param delete 是否删除
      */
@@ -87,6 +87,7 @@ public class CommonController
             ajax.put("fileName", fileName);
             ajax.put("newFileName", FileUtils.getName(fileName));
             ajax.put("originalFilename", file.getOriginalFilename());
+            log.info("上传图片"+ url);
             return ajax;
         }
         catch (Exception e)
@@ -113,7 +114,7 @@ public class CommonController
             {
                 // 上传并返回新文件名称
                 String fileName = FileUploadUtils.upload(filePath, file);
-                String url = serverConfig.getUrl() + fileName;
+                String url = "http://192.168.17.3:8090" + fileName;
                 urls.add(url);
                 fileNames.add(fileName);
                 newFileNames.add(FileUtils.getName(fileName));
