@@ -1,5 +1,6 @@
 package com.ruoyi.uni.controller;
 
+import com.alibaba.fastjson.JSONArray;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.alse.domain.AlseProduct;
 import com.ruoyi.alse.domain.AlseUser;
@@ -9,9 +10,11 @@ import com.ruoyi.common.annotation.CheckToken;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.utils.PageUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.model.DTO.request.product.ProductBatchOperationDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductPublishDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductQueryDTO;
+import com.ruoyi.uni.model.DTO.respone.product.ProductDetailDTO;
 import com.ruoyi.uni.model.DTO.respone.product.ProductListResponseDTO;
 import com.ruoyi.uni.model.Enum.ProductCategoryEnum;
 import com.ruoyi.uni.model.Enum.ProductOperationTypeEnum;
@@ -22,6 +25,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.alibaba.fastjson.JSON;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -32,7 +36,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestController
 @RequestMapping("/api/product")
-@Api(tags = "商品接口（开发中）")
+@Api(tags = "商品接口")
 public class UniProductController {
 
     // 创建固定精度的金额处理工厂（2位小数）
@@ -209,21 +213,104 @@ public class UniProductController {
 
         // 查询商品详情
         AlseProduct product = productService.selectAlseProductByProductId(productId);
+
         if (product == null) {
             return AjaxResult.error("商品不存在");
         }
+        AlseUser user = null;
+        if (product.getPublisherId() != null) {
+            user = userService.selectAlseUserByUserId(product.getPublisherId());
+        }
 
+        ProductDetailDTO productDetailDTO = new ProductDetailDTO();
+        // 设置用户互动状态（关注和收藏）
+        setUserInteractionStatus(productDetailDTO, product, user);
+
+        productDetailDTO.setProductId(product.getProductId());
+        productDetailDTO.setProductTitle(product.getProductTitle());
+        productDetailDTO.setProductCategory(product.getProductCategory());
+        productDetailDTO.setProductCoverImg(product.getProductCoverImg());
         // 转换详情图片从JSON到List
         try {
             if (product.getProductDetailImgs() != null && !product.getProductDetailImgs().isEmpty()) {
                 List<String> detailImgList = objectMapper.readValue(product.getProductDetailImgs(), List.class);
-                product.setDetailImgList(detailImgList);
+                productDetailDTO.setDetailImgList(detailImgList);
             }
         } catch (Exception e) {
             log.error("解析商品详情图片异常", e);
         }
 
-        return AjaxResult.success(product);
+        productDetailDTO.setProductDetailImgs(product.getProductDetailImgs());
+        productDetailDTO.setProductDescription(product.getProductDescription());
+        productDetailDTO.setProductPrice(product.getProductPrice());
+        if (user != null) {
+            productDetailDTO.setPublisherImg(user.getAvatar());
+        }
+        productDetailDTO.setShippingMethod(ShippingMethodEnum.getByCode(product.getShippingMethod()).getDesc());
+        productDetailDTO.setSalesCount(product.getSalesCount());
+        productDetailDTO.setProductStatus(product.getProductStatus());
+        productDetailDTO.setPublisherName(product.getPublisherName());
+        productDetailDTO.setPublisherPhone(product.getPublisherPhone());
+        productDetailDTO.setProductRating(product.getProductRating());
+        productDetailDTO.setShopName(product.getShopName());
+        productDetailDTO.setStatus(product.getStatus());
+        productDetailDTO.setCreateTime(product.getCreateTime());
+        productDetailDTO.setUpdateTime(product.getUpdateTime());
+        return AjaxResult.success(productDetailDTO);
+    }
+
+
+    /**
+     * 判断当前用户是否关注了商品发布者、是否收藏了该商品
+     */
+    private void setUserInteractionStatus(ProductDetailDTO productDetailDTO, AlseProduct product, AlseUser currentUser) {
+        // 默认设置为未关注、未收藏
+        productDetailDTO.setIsStar(false);
+        productDetailDTO.setIsShopStar(false);
+
+        // 如果当前用户未登录，直接返回
+        if (currentUser == null) {
+            return;
+        }
+
+        // 获取商品发布者ID
+        Long publisherId = product.getPublisherId();
+        // 获取商品ID
+        Long productId = product.getProductId();
+
+        // 判断是否关注了该用户
+        String followedUserIdsJson = currentUser.getFollowedUserIds();
+        if (!StringUtils.isEmpty(followedUserIdsJson)) {
+            try {
+                JSONArray followedUserIds = JSON.parseArray(followedUserIdsJson);
+                // 检查发布者ID是否在关注列表中
+                for (int i = 0; i < followedUserIds.size(); i++) {
+                    if (publisherId.equals(followedUserIds.getLong(i))) {
+                        productDetailDTO.setIsStar(true);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                log.error("解析用户关注列表失败", e);
+            }
+        }
+
+        // 判断是否收藏了该商品
+        String favoriteProductsJson = currentUser.getFavoriteProducts();
+        if (!StringUtils.isEmpty(favoriteProductsJson)) {
+            try {
+                JSONArray favoriteProducts = JSON.parseArray(favoriteProductsJson);
+                // 检查商品ID是否在收藏列表中
+                for (int i = 0; i < favoriteProducts.size(); i++) {
+                    if (productId.equals(favoriteProducts.getLong(i))) {
+                        productDetailDTO.setIsShopStar(true);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                log.error("解析用户收藏商品列表失败", e);
+            }
+        }
     }
 
     /**

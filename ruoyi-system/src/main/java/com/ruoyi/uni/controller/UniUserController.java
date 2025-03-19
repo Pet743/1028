@@ -1,15 +1,14 @@
 package com.ruoyi.uni.controller;
 
-
 import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.alse.service.IAlseUserService;
 import com.ruoyi.common.annotation.CheckToken;
 import com.ruoyi.common.annotation.NoToken;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.uni.model.DTO.request.user.ForgetPasswordRequestDTO;
-import com.ruoyi.uni.model.DTO.request.user.LoginDTO;
-import com.ruoyi.uni.model.DTO.request.user.RegisterRequestDTO;
+import com.ruoyi.uni.converter.UserConverter;
+import com.ruoyi.uni.model.DTO.request.user.*;
+import com.ruoyi.uni.model.DTO.respone.user.UserInfoResponseDTO;
 import com.ruoyi.uni.util.JwtUtil;
 import com.ruoyi.uni.util.SecurityUtils;
 import com.ruoyi.uni.util.ValidateUtil;
@@ -24,6 +23,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @Slf4j
@@ -154,20 +154,26 @@ public class UniUserController {
     /**
      * 用户信息编辑接口
      *
-     * @param userId   用户ID
-     * @param alseUser 用户信息对象，包含需要编辑的字段
+     * @param requestDTO 包含用户ID和需要编辑的用户信息
      * @return 编辑结果
      */
-    @GetMapping("/edit/{userId}")
+    @PostMapping("/edit")
     @CheckToken
     @ApiOperation("编辑用户信息")
-    public AjaxResult editUser(@PathVariable("userId") Long userId, @RequestBody AlseUser alseUser) {
+    public AjaxResult editUser(@RequestBody UserEditRequestDTO requestDTO) {
         // 先查询是否存在该用户
-        AlseUser existingUser = alseUserService.selectAlseUserByUserId(userId);
+        AlseUser existingUser = alseUserService.selectAlseUserByUserId(requestDTO.getUserId());
         if (existingUser == null) {
             return AjaxResult.error("用户不存在");
         }
 
+        // 从DTO中获取用户信息
+        AlseUser alseUser = requestDTO.getUserInfo();
+        if (Objects.nonNull(requestDTO.getUserInfo()) && StringUtils.isNotBlank(requestDTO.getUserInfo().getPassword())) {
+            alseUser.setPassword(SecurityUtils.encryptPassword(requestDTO.getUserInfo().getPassword()));
+        } else {
+            alseUser.setPassword(null);
+        }
         // 只更新传入值不为 null 的字段
         BeanUtils.copyProperties(alseUser, existingUser, getNullPropertyNames(alseUser));
 
@@ -234,6 +240,176 @@ public class UniUserController {
             return AjaxResult.error("密码重置失败，请稍后重试");
         }
     }
+
+    /**
+     * 获取用户信息接口
+     */
+    @GetMapping("/info/{userId}")
+    @CheckToken
+    @ApiOperation("获取用户信息")
+    public AjaxResult getUserInfo(@PathVariable("userId") Long userId) {
+        try {
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(userId);
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 转换为DTO
+            UserInfoResponseDTO userInfoDTO = UserConverter.convertToUserInfoDTO(user);
+
+            return AjaxResult.success(userInfoDTO);
+        } catch (Exception e) {
+            log.error("获取用户信息失败：", e);
+            return AjaxResult.error("获取用户信息失败");
+        }
+    }
+
+
+    /**
+     * 关注/取消关注用户接口
+     */
+    @PostMapping("/follow")
+    @CheckToken
+    @ApiOperation("关注/取消关注用户")
+    public AjaxResult followUser(@RequestBody FollowUserRequestDTO requestDTO) {
+        // 参数校验
+        if (requestDTO.getUserId() == null || requestDTO.getTargetUserId() == null) {
+            return AjaxResult.error("参数不完整");
+        }
+
+        // 不能关注自己
+        if (requestDTO.getUserId().equals(requestDTO.getTargetUserId())) {
+            return AjaxResult.error("不能关注自己");
+        }
+
+        try {
+            // 获取当前用户信息
+            AlseUser currentUser = alseUserService.selectAlseUserByUserId(requestDTO.getUserId());
+            if (currentUser == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 验证目标用户是否存在
+            AlseUser targetUser = alseUserService.selectAlseUserByUserId(requestDTO.getTargetUserId());
+            if (targetUser == null) {
+                return AjaxResult.error("关注的用户不存在");
+            }
+
+            // 处理关注列表
+            String followedUserIdsJson = currentUser.getFollowedUserIds();
+            List<Long> followedUserIds;
+
+            if (StringUtils.isEmpty(followedUserIdsJson)) {
+                followedUserIds = new ArrayList<>();
+            } else {
+                // 简单处理JSON字符串，假设格式为 [1,2,3,4]
+                String content = followedUserIdsJson.replace("[", "").replace("]", "").trim();
+                if (content.isEmpty()) {
+                    followedUserIds = new ArrayList<>();
+                } else {
+                    followedUserIds = Arrays.stream(content.split(","))
+                            .map(String::trim)
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList());
+                }
+            }
+
+            boolean isFollowed = followedUserIds.contains(requestDTO.getTargetUserId());
+
+            // 如果是关注操作且未关注，则添加
+            if (requestDTO.isFollow() && !isFollowed) {
+                followedUserIds.add(requestDTO.getTargetUserId());
+            }
+            // 如果是取消关注操作且已关注，则移除
+            else if (!requestDTO.isFollow() && isFollowed) {
+                followedUserIds.remove(requestDTO.getTargetUserId());
+            }
+
+            // 更新用户的关注列表
+            String newFollowedUserIdsJson = "[" + followedUserIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(",")) + "]";
+
+
+            // 更新用户的关注列表
+            currentUser.setFollowedUserIds(newFollowedUserIdsJson);
+            currentUser.setUpdateTime(new Date());
+            currentUser.setUpdateBy(currentUser.getUsername());
+
+            int result = alseUserService.updateAlseUser(currentUser);
+            if (result > 0) {
+                return AjaxResult.success(requestDTO.isFollow() ? "关注成功" : "取消关注成功");
+            } else {
+                return AjaxResult.error(requestDTO.isFollow() ? "关注失败" : "取消关注失败");
+            }
+        } catch (Exception e) {
+            log.error("关注/取消关注操作失败：", e);
+            return AjaxResult.error("操作失败，请稍后重试");
+        }
+    }
+
+    /**
+     * 实名认证接口
+     */
+    @PostMapping("/verify-identity")
+    @CheckToken
+    @ApiOperation("实名认证")
+    public AjaxResult verifyIdentity(@RequestBody VerifyIdentityRequestDTO requestDTO) {
+        // 参数校验
+        if (requestDTO.getUserId() == null) {
+            return AjaxResult.error("用户ID不能为空");
+        }
+        if (StringUtils.isEmpty(requestDTO.getRealName())) {
+            return AjaxResult.error("真实姓名不能为空");
+        }
+        if (StringUtils.isEmpty(requestDTO.getIdCardNo())) {
+            return AjaxResult.error("身份证号码不能为空");
+        }
+        if (StringUtils.isEmpty(requestDTO.getIdCardFrontImg())) {
+            return AjaxResult.error("身份证正面照片不能为空");
+        }
+        if (StringUtils.isEmpty(requestDTO.getIdCardBackImg())) {
+            return AjaxResult.error("身份证反面照片不能为空");
+        }
+
+        // 验证身份证号格式
+        if (!ValidateUtil.isIdCard(requestDTO.getIdCardNo())) {
+            return AjaxResult.error("身份证号码格式不正确");
+        }
+
+        try {
+            // 获取用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(requestDTO.getUserId());
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 检查是否已实名认证
+            if (!StringUtils.isEmpty(user.getIdCardNo())) {
+                return AjaxResult.error("该用户已完成实名认证，不能重复认证");
+            }
+
+            // 更新实名认证信息
+            user.setRealName(requestDTO.getRealName());
+            user.setIdCardNo(requestDTO.getIdCardNo());
+            user.setIdCardFrontImg(requestDTO.getIdCardFrontImg());
+            user.setIdCardBackImg(requestDTO.getIdCardBackImg());
+            user.setUpdateTime(new Date());
+            user.setUpdateBy(user.getUsername());
+
+            int result = alseUserService.updateAlseUser(user);
+            if (result > 0) {
+                return AjaxResult.success("实名认证成功");
+            } else {
+                return AjaxResult.error("实名认证失败");
+            }
+        } catch (Exception e) {
+            log.error("实名认证失败：", e);
+            return AjaxResult.error("实名认证失败，请稍后重试");
+        }
+    }
+
 
     /**
      * 获取源对象中值为 null 的属性名

@@ -6,10 +6,9 @@ package com.ruoyi.uni.model.Enum;
  */
 public enum ShippingMethodEnum {
 
-    EXPRESS("express", "快递"),
-    EMS("ems", "EMS"),
-    SELF_PICKUP("self_pickup", "自提"),
-    FREE_SHIPPING("free_shipping", "包邮");
+    EXPRESS("express", "快递发货"),
+    SELF_PICKUP("self_pickup", "同城自提"),
+    FACE_TO_FACE("face_to_face", "当面交易");
 
     private final String code;
     private final String desc;

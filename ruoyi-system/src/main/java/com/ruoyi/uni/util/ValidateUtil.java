@@ -1,5 +1,7 @@
 package com.ruoyi.uni.util;
 
+import com.ruoyi.common.utils.StringUtils;
+
 public class ValidateUtil {
     /**
      * 手机号正则表达式
@@ -23,5 +25,18 @@ public class ValidateUtil {
      */
     public static boolean isEmail(String input) {
         return input != null && input.matches(EMAIL_REGEX);
+    }
+
+    public static boolean isIdCard(String idCard) {
+        if (StringUtils.isEmpty(idCard)) {
+            return false;
+        }
+
+        // 18位身份证正则表达式
+        String regex18 = "^[1-9]\\d{5}(19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}[0-9Xx]$";
+        // 15位身份证正则表达式
+        String regex15 = "^[1-9]\\d{5}\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}$";
+
+        return idCard.matches(regex18) || idCard.matches(regex15);
     }
 }
