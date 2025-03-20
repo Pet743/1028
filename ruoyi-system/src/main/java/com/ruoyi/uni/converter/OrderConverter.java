@@ -87,6 +87,51 @@ public class OrderConverter {
         detailDTO.setWalletTransactionId(order.getWalletTransactionId());
         detailDTO.setRemark(order.getRemark());
 
+        // 设置物流信息
+        detailDTO.setLogisticsCompany(order.getLogisticsCompany());
+        detailDTO.setLogisticsNo(order.getLogisticsNo());
+
+        // 设置时间信息
+        detailDTO.setPaymentTime(order.getPaymentTime());
+        detailDTO.setShippingTime(order.getShippingTime());
+        detailDTO.setReceivingTime(order.getReceivingTime());
+
+        // 解析收货地址信息
+        parseShippingAddressInfo(order, detailDTO);
+
         return detailDTO;
+    }
+
+    /**
+     * 解析订单收货地址信息
+     */
+    private static void parseShippingAddressInfo(AlseOrder order, OrderDetailResponseDTO detailDTO) {
+        if (order.getShippingAddressId() != null) {
+            // 此处可以根据实际需求决定是调用地址服务查询完整地址，还是解析shippingAddress字段
+            // 方案1: 解析已有的收货地址字符串(简单实现)
+            String fullAddress = order.getShippingAddress();
+            if (fullAddress != null && !fullAddress.isEmpty()) {
+                // 假设shippingAddress格式为: 省份城市区县详细地址
+                // 可以根据实际格式进行调整解析逻辑
+                try {
+                    // 简单解析逻辑，实际项目中可能需要更复杂的解析或直接查询地址表
+                    int provinceEnd = Math.min(fullAddress.length(), 3);  // 省份通常2-3个字
+                    int cityEnd = Math.min(fullAddress.length(), provinceEnd + 3);  // 城市通常2-4个字
+                    int districtEnd = Math.min(fullAddress.length(), cityEnd + 4);  // 区县通常2-4个字
+
+                    detailDTO.setProvince(fullAddress.substring(0, provinceEnd));
+                    detailDTO.setCity(fullAddress.substring(provinceEnd, cityEnd));
+                    detailDTO.setDistrict(fullAddress.substring(cityEnd, districtEnd));
+                    detailDTO.setDetailAddress(fullAddress.substring(districtEnd));
+
+                    // 设置联系人信息
+                    detailDTO.setContactName(order.getBuyerName());
+                    detailDTO.setContactPhone(order.getBuyerPhone());
+                } catch (Exception e) {
+                    // 解析失败时的处理
+                    detailDTO.setDetailAddress(fullAddress);
+                }
+            }
+        }
     }
 }

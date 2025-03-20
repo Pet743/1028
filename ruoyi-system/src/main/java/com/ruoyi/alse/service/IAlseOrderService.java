@@ -8,6 +8,7 @@ import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.ShipOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
 
 /**
  * 商品订单Service接口
@@ -83,7 +84,7 @@ public interface IAlseOrderService
      * @param userId 用户ID
      * @return 订单响应DTO
      */
-    public OrderResponseDTO createOrder(CreateOrderRequestDTO requestDTO, Long userId);
+    public PaymentResultDTO createOrder(CreateOrderRequestDTO requestDTO, Long userId);
 
     /**
      * 根据订单状态查询订单列表

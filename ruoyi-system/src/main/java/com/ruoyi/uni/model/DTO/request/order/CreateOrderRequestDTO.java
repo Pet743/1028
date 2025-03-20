@@ -11,6 +11,9 @@ import javax.validation.constraints.NotNull;
 @Data
 @ApiModel("创建订单请求")
 public class CreateOrderRequestDTO {
+    @NotNull(message = "用户ID不能为空")
+    @ApiModelProperty(value = "用户ID", required = true)
+    private Long userId;
 
     @NotNull(message = "商品ID不能为空")
     @ApiModelProperty(value = "商品ID", required = true)

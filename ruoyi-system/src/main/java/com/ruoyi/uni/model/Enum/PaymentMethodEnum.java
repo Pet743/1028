@@ -21,12 +21,27 @@ public enum PaymentMethodEnum {
         this.desc = desc;
     }
 
-    public static PaymentMethodEnum getByCode(int code) {
+    public Integer getCode() {
+        return code;
+    }
+
+    public String getDesc() {
+        return desc;
+    }
+
+    /**
+     * 根据code获取枚举
+     */
+    public static PaymentMethodEnum getByCode(Integer code) {
+        if (code == null) {
+            return ALIPAY;
+        }
+
         for (PaymentMethodEnum method : values()) {
-            if (method.getCode() == code) {
+            if (method.getCode().equals(code)) {
                 return method;
             }
         }
-        return null;
+        return ALIPAY;
     }
 }

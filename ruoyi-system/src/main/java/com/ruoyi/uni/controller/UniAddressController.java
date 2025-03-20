@@ -220,10 +220,11 @@ public class UniAddressController extends BaseController {
     /**
      * 删除地址（软删除）
      */
-    @DeleteMapping("/{addressId}")
+    @GetMapping("/delete/{addressId}")
     @CheckToken
     @ApiOperation("删除地址")
-    public AjaxResult deleteAddress(@PathVariable("addressId") Long addressId, @RequestParam("userId") Long userId) {
+    public AjaxResult deleteAddress(@PathVariable("addressId") Long addressId,
+                                    @RequestParam("userId") Long userId) {
         try {
             // 查询原地址信息
             AlseUserAddress existingAddress = addressService.selectAlseUserAddressByAddressId(addressId);

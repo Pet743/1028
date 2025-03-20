@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 
 @Service
 @Slf4j
-public class PaymentService {
+public class ALiPaymentService {
 
     @Autowired
     private AlipayProperties alipayProperties;
@@ -121,6 +121,52 @@ public class PaymentService {
         return redirectUrl;
     }
 
+
+    public String backPaymentReturnUrl(PaymentRequestDTO requestDTO) throws AlipayApiException {
+        // 1. DTO 转换为业务模型
+        AlipayTradeWapPayModel paymentModel = PaymentConverter.convertToPaymentModel(requestDTO);
+        if (paymentModel == null) {
+            throw new IllegalArgumentException("支付请求数据不能为空");
+        }
+
+        // 2. 使用 FinanceUtils 规范化总金额，并转换为字符串
+        BigDecimal normalizedAmount = FinanceUtils.normalizeAmount(new BigDecimal(paymentModel.getTotalAmount()));
+        String totalAmountStr = normalizedAmount.toPlainString();
+
+        // 3. 初始化支付宝客户端
+        AlipayClient alipayClient = new DefaultAlipayClient(getAlipayConfig());
+
+        // 4. 构造支付请求 - 使用手机网站支付（而非PC网页支付）
+        AlipayTradeWapPayRequest request = new AlipayTradeWapPayRequest();
+
+        // 设置回调地址
+        request.setReturnUrl(alipayProperties.getReturnUrl());
+        request.setNotifyUrl(alipayProperties.getNotifyUrl());
+
+        // 构造业务参数JSON
+        String bizContent = String.format(
+                "{\"out_trade_no\":\"%s\",\"product_code\":\"QUICK_WAP_WAY\",\"subject\":\"%s\",\"total_amount\":\"%s\"}",
+                paymentModel.getOutTradeNo(),
+                paymentModel.getSubject(),
+                totalAmountStr
+        );
+        request.setBizContent(bizContent);
+
+        // 直接使用SDK执行请求并获取完整URL
+        AlipayTradeWapPayResponse response = alipayClient.pageExecute(request, "GET");
+
+        // 检查响应
+        if (!response.isSuccess()) {
+            log.error("调用支付宝接口失败，错误码：{}, 错误描述：{}", response.getCode(), response.getMsg());
+            throw new AlipayApiException("调用支付宝接口失败：" + response.getMsg());
+        }
+
+        // 获取返回的URL
+        String redirectUrl = response.getBody();
+        log.info("生成支付URL：{}", redirectUrl);
+
+        return redirectUrl;
+    }
 
     /**
      * 从配置文件中读取参数，构造 AlipayConfig 对象

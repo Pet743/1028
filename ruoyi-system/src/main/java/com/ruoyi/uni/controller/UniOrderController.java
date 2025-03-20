@@ -15,6 +15,7 @@ import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.ShipOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -50,16 +51,18 @@ public class UniOrderController {
     @PostMapping("/create")
     @CheckToken
     @ApiOperation("创建订单")
-    @Log(title = "创建订单", businessType = BusinessType.INSERT)
     public AjaxResult createOrder(@RequestBody @Validated CreateOrderRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
 
-            // 创建订单
-            OrderResponseDTO responseDTO = alseOrderService.createOrder(requestDTO, userId);
+            // 创建订单并处理支付
+            PaymentResultDTO paymentResult = alseOrderService.createOrder(requestDTO, requestDTO.getUserId());
 
-            return AjaxResult.success("创建订单成功", responseDTO);
+            // 根据支付状态返回不同的消息
+            if (paymentResult.getPaymentStatus() == 2) { // 已支付成功
+                return AjaxResult.success("订单创建并支付成功", paymentResult);
+            } else {
+                return AjaxResult.success("订单创建成功，请继续完成支付", paymentResult);
+            }
         } catch (Exception e) {
             log.error("创建订单失败", e);
             return AjaxResult.error(e.getMessage());

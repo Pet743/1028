@@ -16,8 +16,11 @@ import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.ShipOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
 import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
+import com.ruoyi.uni.service.PaymentProcessor;
+import com.ruoyi.uni.service.factory.PaymentProcessorFactory;
 import com.ruoyi.uni.util.FinanceUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +53,10 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
 
     @Autowired
     private IAlseWalletTransactionService alseWalletTransactionService;
+
+    @Autowired
+    private PaymentProcessorFactory paymentProcessorFactory;
+
 
     /**
      * 查询最近一段时间内的待支付订单
@@ -491,11 +498,11 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
     }
 
     /**
-     * 创建订单
+     * 创建订单并处理支付
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public OrderResponseDTO createOrder(CreateOrderRequestDTO requestDTO, Long userId) {
+    public PaymentResultDTO createOrder(CreateOrderRequestDTO requestDTO, Long userId) {
         log.info("开始创建订单，用户ID：{}，请求参数：{}", userId, requestDTO);
 
         // 1. 异步获取必要信息
@@ -532,12 +539,15 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
                 throw new ServiceException("收货地址不存在或不属于当前用户");
             }
 
-            // 5. 计算订单金额（使用 FinanceUtils.calculateTotal）
+            // 4. 计算订单金额
             BigDecimal totalAmount = FinanceUtils.calculateTotal(product.getProductPrice(), requestDTO.getQuantity());
+
+            // 5. 生成订单号
+            String orderNo = generateOrderNo();
 
             // 6. 创建订单对象
             AlseOrder order = new AlseOrder();
-            order.setOrderNo(generateOrderNo());
+            order.setOrderNo(orderNo);
             order.setProductId(product.getProductId());
             order.setProductName(product.getProductTitle());
             order.setProductImageUrl(product.getProductCoverImg());
@@ -584,23 +594,26 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
             order.setUpdateTime(DateUtils.getNowDate());
             order.setRemark(requestDTO.getRemark());
 
-            // 7. 处理钱包支付
-            if (requestDTO.getPaymentMethod() == PaymentMethodEnum.WALLET.getCode()) {
-                processWalletPayment(order, buyer);
-            }
-
-            // 8. 插入订单
+            // 7. 先保存订单基本信息
             alseOrderMapper.insertAlseOrder(order);
 
-            // 9. 返回结果
-            return OrderConverter.convertToOrderResponseDTO(order);
+            // 8. 获取对应的支付处理器并处理支付
+            PaymentProcessor paymentProcessor = paymentProcessorFactory.getProcessor(requestDTO.getPaymentMethod());
+            PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
 
+            // 9. 如果是钱包支付或其他直接完成的支付方式，订单状态会在处理器中更新，需要再次保存
+            if (paymentResult.getPaymentStatus() == 2) { // 已支付
+                alseOrderMapper.updateAlseOrder(order);
+            }
+
+            return paymentResult;
         } catch (InterruptedException | ExecutionException e) {
             log.error("创建订单异步获取数据异常", e);
             Thread.currentThread().interrupt();
             throw new ServiceException("创建订单失败，请稍后重试");
         }
     }
+
 
     /**
      * 处理钱包支付
@@ -691,7 +704,25 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         if (!order.getBuyerId().equals(userId) && !order.getSellerId().equals(userId)) {
             throw new ServiceException("无权查看该订单");
         }
-        return OrderConverter.convertToOrderDetailResponseDTO(order);
+
+        // 获取基本详情DTO
+        OrderDetailResponseDTO detailDTO = OrderConverter.convertToOrderDetailResponseDTO(order);
+
+        // 如果有收货地址ID，查询详细的地址信息
+        if (order.getShippingAddressId() != null) {
+            AlseUserAddress address = alseUserAddressService.selectAlseUserAddressByAddressId(order.getShippingAddressId());
+            if (address != null) {
+                // 设置详细地址信息
+                detailDTO.setContactName(address.getContactName());
+                detailDTO.setContactPhone(address.getContactPhone());
+                detailDTO.setProvince(address.getProvince());
+                detailDTO.setCity(address.getCity());
+                detailDTO.setDistrict(address.getDistrict());
+                detailDTO.setDetailAddress(address.getDetailAddress());
+            }
+        }
+
+        return detailDTO;
     }
 
     /**

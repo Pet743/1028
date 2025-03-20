@@ -12,7 +12,7 @@ import com.ruoyi.uni.config.AlipayProperties;
 import com.ruoyi.uni.model.DTO.request.order.AlipayNotifyParam;
 import com.ruoyi.uni.model.DTO.request.payment.PaymentRequestDTO;
 import com.ruoyi.uni.model.Enum.OrderStatusEnum;
-import com.ruoyi.uni.service.PaymentService;
+import com.ruoyi.uni.service.ALiPaymentService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.*;
 public class UniPayController {
 
     @Autowired
-    private PaymentService paymentService;
+    private ALiPaymentService ALiPaymentService;
 
     @Autowired
     private IAlseOrderService orderService;
@@ -99,7 +99,7 @@ public class UniPayController {
                     // 对于待付款状态的订单，查询支付宝
                     else if (order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode()) {
                         // 查询支付宝订单状态
-                        AlipayTradeQueryResponse response = paymentService.queryAlipayOrderStatus(order.getOrderNo());
+                        AlipayTradeQueryResponse response = ALiPaymentService.queryAlipayOrderStatus(order.getOrderNo());
 
                         // 只处理查询成功并且支付成功的订单
                         if (response.isSuccess()) {
@@ -176,7 +176,7 @@ public class UniPayController {
             requestDTO.setSessionKey(sessionKey);
 
             // 处理支付请求，获取支付链接
-            String paymentUrl = paymentService.processPaymentReturnUrl(requestDTO);
+            String paymentUrl = ALiPaymentService.processPaymentReturnUrl(requestDTO);
 
             // 直接重定向到支付页面
             response.sendRedirect(paymentUrl);
