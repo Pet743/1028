@@ -12,6 +12,14 @@ import com.ruoyi.alse.domain.AlseProduct;
 public interface IAlseProductService 
 {
     /**
+     * 使用行锁查询商品信息（用于库存操作）
+     *
+     * @param productId 商品ID
+     * @return 商品信息
+     */
+    AlseProduct selectAlseProductByProductIdForUpdate(Long productId);
+
+    /**
      * 查询商品
      * 
      * @param productId 商品主键

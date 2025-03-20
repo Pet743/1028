@@ -41,6 +41,10 @@ public class AlseProduct extends BaseEntity
     @Excel(name = "商品描述")
     private String productDescription;
 
+    /** 库存数量 */
+    @Excel(name = "库存数量")
+    private Integer stockQuantity;
+
     /** 商品价格 */
     @Excel(name = "商品价格")
     private BigDecimal productPrice;
@@ -151,6 +155,16 @@ public class AlseProduct extends BaseEntity
     public String getProductDescription() 
     {
         return productDescription;
+    }
+
+    public void setStockQuantity(Integer stockQuantity)
+    {
+        this.stockQuantity = stockQuantity;
+    }
+
+    public Integer getStockQuantity()
+    {
+        return stockQuantity;
     }
 
     public void setProductPrice(BigDecimal productPrice) 

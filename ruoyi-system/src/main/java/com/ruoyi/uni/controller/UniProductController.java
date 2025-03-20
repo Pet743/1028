@@ -2,6 +2,8 @@ package com.ruoyi.uni.controller;
 
 import com.alibaba.fastjson.JSONArray;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.ruoyi.alse.domain.AlseProduct;
 import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.alse.service.IAlseProductService;
@@ -10,6 +12,7 @@ import com.ruoyi.common.annotation.CheckToken;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.utils.PageUtils;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.model.DTO.request.product.ProductBatchOperationDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductPublishDTO;
@@ -39,9 +42,6 @@ import java.util.stream.Collectors;
 @Api(tags = "商品接口")
 public class UniProductController {
 
-    // 创建固定精度的金额处理工厂（2位小数）
-    private static final BigDecimal ZERO_PRICE = BigDecimal.ZERO;
-    private static final BigDecimal MAX_PRICE = new BigDecimal("1000000"); // 最大价格限制
 
     @Autowired
     private IAlseProductService productService;
@@ -159,8 +159,20 @@ public class UniProductController {
     @GetMapping("/list")
     @ApiOperation("首页商品查询")
     public TableDataInfo list(ProductQueryDTO queryDTO) {
-        // 分页查询
-        PageUtils.startPage();
+        // 获取分页参数
+        Integer pageNum = ServletUtils.getParameterToInt("pageNum");
+        Integer pageSize = ServletUtils.getParameterToInt("pageSize");
+
+        // 确保分页参数有效
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1) {
+            pageSize = 10;  // 默认每页10条
+        }
+
+        // 开启分页
+        PageHelper.startPage(pageNum, pageSize);
 
         // 构建查询条件
         AlseProduct query = new AlseProduct();
@@ -168,13 +180,21 @@ public class UniProductController {
         query.setStatus("0"); // 只查询正常状态商品
 
         // 设置分类查询
-        if (queryDTO.getCategory() != null && !queryDTO.getCategory().isEmpty()) {
+        if (queryDTO != null && queryDTO.getCategory() != null && !queryDTO.getCategory().isEmpty()) {
             ProductCategoryEnum categoryEnum = ProductCategoryEnum.getByCode(queryDTO.getCategory());
             query.setProductCategory(categoryEnum.getCode());
         }
 
         // 查询商品列表
         List<AlseProduct> productList = productService.selectAlseProductList(query);
+
+        // 创建PageInfo对象，用于获取总记录数和页数信息
+        PageInfo<AlseProduct> pageInfo = new PageInfo<>(productList);
+
+        // 如果当前页码超出总页数且总页数不为0，则返回空列表
+        if (pageNum > pageInfo.getPages() && pageInfo.getPages() > 0) {
+            return getDataTable(new ArrayList<>(), pageInfo.getTotal());
+        }
 
         // 转换为响应DTO
         List<ProductListResponseDTO> responseList = productList.stream().map(product -> {
@@ -198,8 +218,9 @@ public class UniProductController {
         }).collect(Collectors.toList());
 
         // 返回分页结果
-        return getDataTable(responseList);
+        return getDataTable(responseList, pageInfo.getTotal());
     }
+
 
     /**
      * 商品详情查询
@@ -362,12 +383,13 @@ public class UniProductController {
     /**
      * 封装分页数据
      */
-    protected TableDataInfo getDataTable(List<?> list) {
+    protected TableDataInfo getDataTable(List<?> list, long total) {
         TableDataInfo rspData = new TableDataInfo();
         rspData.setCode(200);
         rspData.setRows(list);
         rspData.setMsg("查询成功");
-        rspData.setTotal(new com.github.pagehelper.PageInfo(list).getTotal());
+        rspData.setTotal(total);
         return rspData;
     }
+
 }

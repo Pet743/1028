@@ -58,6 +58,55 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
     private PaymentProcessorFactory paymentProcessorFactory;
 
 
+    @Override
+    public List<AlseOrder> getTimeoutUnpaidOrders(int timeoutMinutes) {
+        // 计算超时时间点
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.MINUTE, -timeoutMinutes);
+        Date timeoutTime = calendar.getTime();
+
+        // 查询条件：待付款状态 + 创建时间早于超时时间点
+        AlseOrder queryParam = new AlseOrder();
+        queryParam.setOrderStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("endCreateTime", DateUtils.parseDateToStr("yyyy-MM-dd HH:mm:ss", timeoutTime));
+        queryParam.setParams(params);
+
+        return alseOrderMapper.selectAlseOrderList(queryParam);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean cancelTimeoutOrder(Long orderId) {
+        // 查询订单
+        AlseOrder order = alseOrderMapper.selectAlseOrderByOrderId(orderId);
+        if (order == null) {
+            log.error("取消超时订单失败：订单不存在，订单ID：{}", orderId);
+            return false;
+        }
+
+        // 验证订单状态
+        if (order.getOrderStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+            log.error("取消超时订单失败：订单状态不是待付款，订单ID：{}，当前状态：{}",
+                    orderId, order.getOrderStatus());
+            return false;
+        }
+
+        // 更新订单状态
+        order.setOrderStatus(OrderStatusEnum.CLOSED.getCode());
+        order.setUpdateTime(DateUtils.getNowDate());
+        order.setUpdateBy("system");
+        order.setRemark((order.getRemark() != null ? order.getRemark() + "；" : "") + "系统自动取消（超时未支付）");
+
+        // 释放商品库存
+        unlockProductStock(order.getProductId(), order.getQuantity());
+
+        // 更新订单
+        int rows = alseOrderMapper.updateAlseOrder(order);
+        return rows > 0;
+    }
+
     /**
      * 查询最近一段时间内的待支付订单
      *
@@ -233,13 +282,16 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         order.setUpdateBy(String.valueOf(userId));
 
         // 5. 如果是钱包支付且已支付，需要退款处理
-        if (order.getPaymentMethod() == PaymentMethodEnum.WALLET.getCode() &&
+        if (order.getPaymentMethod().equals(PaymentMethodEnum.WALLET.getCode()) &&
                 order.getWalletTransactionId() != null &&
                 order.getPaymentTime() != null) {
             processWalletRefund(order);
         }
 
-        // 6. 更新订单
+        // 6. 释放商品库存
+        unlockProductStock(order.getProductId(), order.getQuantity());
+
+        // 7. 更新订单
         int rows = alseOrderMapper.updateAlseOrder(order);
         return rows > 0;
     }
@@ -539,13 +591,28 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
                 throw new ServiceException("收货地址不存在或不属于当前用户");
             }
 
-            // 4. 计算订单金额
+            // 4. 检查商品状态和库存
+            if (!"0".equals(product.getProductStatus())) {
+                throw new ServiceException("商品已下架，无法购买");
+            }
+
+            // 检查库存是否充足
+            Integer stockQuantity = product.getStockQuantity();
+            if (stockQuantity == null) {
+                stockQuantity = 1; // 默认库存为1
+            }
+
+            if (stockQuantity < requestDTO.getQuantity()) {
+                throw new ServiceException("商品库存不足，当前库存：" + stockQuantity);
+            }
+
+            // 5. 计算订单金额
             BigDecimal totalAmount = FinanceUtils.calculateTotal(product.getProductPrice(), requestDTO.getQuantity());
 
-            // 5. 生成订单号
+            // 6. 生成订单号
             String orderNo = generateOrderNo();
 
-            // 6. 创建订单对象
+            // 7. 创建订单对象
             AlseOrder order = new AlseOrder();
             order.setOrderNo(orderNo);
             order.setProductId(product.getProductId());
@@ -594,24 +661,143 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
             order.setUpdateTime(DateUtils.getNowDate());
             order.setRemark(requestDTO.getRemark());
 
-            // 7. 先保存订单基本信息
-            alseOrderMapper.insertAlseOrder(order);
-
-            // 8. 获取对应的支付处理器并处理支付
-            PaymentProcessor paymentProcessor = paymentProcessorFactory.getProcessor(requestDTO.getPaymentMethod());
-            PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
-
-            // 9. 如果是钱包支付或其他直接完成的支付方式，订单状态会在处理器中更新，需要再次保存
-            if (paymentResult.getPaymentStatus() == 2) { // 已支付
-                alseOrderMapper.updateAlseOrder(order);
+            // 8. 锁定商品库存
+            boolean stockLockResult = lockProductStock(product.getProductId(), requestDTO.getQuantity());
+            if (!stockLockResult) {
+                throw new ServiceException("商品库存锁定失败，请稍后重试");
             }
 
-            return paymentResult;
+            // 9. 保存订单基本信息
+            alseOrderMapper.insertAlseOrder(order);
+
+            try {
+                // 10. 获取对应的支付处理器并处理支付
+                PaymentProcessor paymentProcessor = paymentProcessorFactory.getProcessor(requestDTO.getPaymentMethod());
+                PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
+
+                // 11. 如果是钱包支付或其他直接完成的支付方式，订单状态会在处理器中更新，需要再次保存
+                if (paymentResult.getPaymentStatus() == 2) { // 已支付
+                    alseOrderMapper.updateAlseOrder(order);
+                }
+
+                return paymentResult;
+            } catch (Exception e) {
+                // 支付处理失败，恢复库存
+                unlockProductStock(product.getProductId(), requestDTO.getQuantity());
+                log.error("支付处理失败，已恢复商品库存", e);
+                throw e;
+            }
         } catch (InterruptedException | ExecutionException e) {
             log.error("创建订单异步获取数据异常", e);
             Thread.currentThread().interrupt();
             throw new ServiceException("创建订单失败，请稍后重试");
         }
+    }
+
+    /**
+     * 锁定商品库存（减少库存）
+     *
+     * @param productId 商品ID
+     * @param quantity 锁定数量
+     * @return 是否锁定成功
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean lockProductStock(Long productId, Long quantity) {
+        // 使用数据库行锁确保并发安全
+        AlseProduct product = alseProductService.selectAlseProductByProductIdForUpdate(productId);
+        if (product == null) {
+            log.error("锁定库存失败：商品不存在，商品ID：{}", productId);
+            return false;
+        }
+
+        // 检查库存
+        Integer currentStock = product.getStockQuantity();
+        if (currentStock == null) {
+            currentStock = 1; // 默认库存为1
+        }
+
+        if (currentStock < quantity) {
+            log.error("锁定库存失败：库存不足，商品ID：{}，当前库存：{}，需要锁定：{}",
+                    productId, currentStock, quantity);
+            return false;
+        }
+
+        // 计算锁定后的库存
+        int newStock = currentStock - quantity.intValue();
+
+        // 更新库存
+        product.setStockQuantity(currentStock - quantity.intValue());
+        product.setUpdateTime(DateUtils.getNowDate());
+        product.setUpdateBy("system");
+
+        // 如果库存为0，自动下架商品
+        if (newStock == 0 && "0".equals(product.getProductStatus())) {
+            log.info("商品库存为0，自动下架商品，商品ID：{}", productId);
+            product.setProductStatus("1"); // 设置为已下架
+            product.setRemark((product.getRemark() != null ? product.getRemark() + "；" : "") + "系统自动下架（库存不足）");
+        }
+
+        int result = alseProductService.updateAlseProduct(product);
+        return result > 0;
+    }
+
+    /**
+     * 解锁商品库存（增加库存）
+     *
+     * @param productId 商品ID
+     * @param quantity 解锁数量
+     * @return 是否解锁成功
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean unlockProductStock(Long productId, Long quantity) {
+        // 使用数据库行锁确保并发安全
+        AlseProduct product = alseProductService.selectAlseProductByProductIdForUpdate(productId);
+        if (product == null) {
+            log.error("解锁库存失败：商品不存在，商品ID：{}", productId);
+            return false;
+        }
+
+        // 获取当前库存
+        Integer currentStock = product.getStockQuantity();
+        if (currentStock == null) {
+            currentStock = 0;
+        }
+
+        // 计算新库存
+        int newStock = currentStock + quantity.intValue();
+
+        // 检查商品是否因库存不足而下架
+        boolean wasDownDueToStock = "1".equals(product.getProductStatus()) &&
+                currentStock == 0 &&
+                (product.getRemark() != null && product.getRemark().contains("系统自动下架（库存不足）"));
+
+        // 更新库存
+        product.setStockQuantity(newStock);
+        product.setUpdateTime(DateUtils.getNowDate());
+        product.setUpdateBy("system");
+
+        // 如果之前是因为库存不足自动下架的，且现在有库存了，则自动上架
+        if (wasDownDueToStock && newStock > 0) {
+            log.info("商品库存恢复，自动上架商品，商品ID：{}", productId);
+            product.setProductStatus("0"); // 设置为已上架
+
+            // 更新备注，移除下架说明
+            String remark = product.getRemark();
+            if (remark != null) {
+                remark = remark.replace("；系统自动下架（库存不足）", "").replace("系统自动下架（库存不足）", "");
+                if (remark.trim().isEmpty()) {
+                    remark = "系统自动上架（库存恢复）";
+                } else {
+                    remark += "；系统自动上架（库存恢复）";
+                }
+                product.setRemark(remark);
+            } else {
+                product.setRemark("系统自动上架（库存恢复）");
+            }
+        }
+
+        int result = alseProductService.updateAlseProduct(product);
+        return result > 0;
     }
 
 

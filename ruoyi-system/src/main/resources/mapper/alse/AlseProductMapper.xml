@@ -11,6 +11,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="productCoverImg"    column="product_cover_img"    />
         <result property="productDetailImgs"    column="product_detail_imgs"    />
         <result property="productDescription"    column="product_description"    />
+        <result property="stockQuantity"    column="stockQuantity"    />
         <result property="productPrice"    column="product_price"    />
         <result property="shippingMethod"    column="shipping_method"    />
         <result property="salesCount"    column="sales_count"    />
@@ -29,7 +30,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectAlseProductVo">
-        select product_id, product_title, product_category, product_cover_img, product_detail_imgs, product_description, product_price, shipping_method, sales_count, product_status, publisher_id, publisher_name, publisher_phone, product_rating, shop_name, status, create_by, create_time, update_by, update_time, remark from alse_product
+        select product_id, product_title, product_category, product_cover_img, product_detail_imgs, product_description, stockQuantity, product_price, shipping_method, sales_count, product_status, publisher_id, publisher_name, publisher_phone, product_rating, shop_name, status, create_by, create_time, update_by, update_time, remark from alse_product
     </sql>
 
     <select id="selectAlseProductList" parameterType="AlseProduct" resultMap="AlseProductResult">
@@ -40,6 +41,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productCoverImg != null  and productCoverImg != ''"> and product_cover_img = #{productCoverImg}</if>
             <if test="productDetailImgs != null  and productDetailImgs != ''"> and product_detail_imgs = #{productDetailImgs}</if>
             <if test="productDescription != null  and productDescription != ''"> and product_description = #{productDescription}</if>
+            <if test="stockQuantity != null "> and stockQuantity = #{stockQuantity}</if>
             <if test="productPrice != null "> and product_price = #{productPrice}</if>
             <if test="shippingMethod != null  and shippingMethod != ''"> and shipping_method = #{shippingMethod}</if>
             <if test="salesCount != null "> and sales_count = #{salesCount}</if>
@@ -51,6 +53,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="shopName != null  and shopName != ''"> and shop_name like concat('%', #{shopName}, '%')</if>
             <if test="status != null  and status != ''"> and status = #{status}</if>
         </where>
+    </select>
+
+    <select id="selectAlseProductByProductIdForUpdate" parameterType="Long" resultMap="AlseProductResult">
+        select p.*
+        from alse_product p
+        where p.product_id = #{productId}
+            for update
     </select>
     
     <select id="selectAlseProductByProductId" parameterType="Long" resultMap="AlseProductResult">
@@ -66,6 +75,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productCoverImg != null and productCoverImg != ''">product_cover_img,</if>
             <if test="productDetailImgs != null">product_detail_imgs,</if>
             <if test="productDescription != null">product_description,</if>
+            <if test="stockQuantity != null">stockQuantity,</if>
             <if test="productPrice != null">product_price,</if>
             <if test="shippingMethod != null and shippingMethod != ''">shipping_method,</if>
             <if test="salesCount != null">sales_count,</if>
@@ -88,6 +98,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productCoverImg != null and productCoverImg != ''">#{productCoverImg},</if>
             <if test="productDetailImgs != null">#{productDetailImgs},</if>
             <if test="productDescription != null">#{productDescription},</if>
+            <if test="stockQuantity != null">#{stockQuantity},</if>
             <if test="productPrice != null">#{productPrice},</if>
             <if test="shippingMethod != null and shippingMethod != ''">#{shippingMethod},</if>
             <if test="salesCount != null">#{salesCount},</if>
@@ -114,6 +125,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productCoverImg != null and productCoverImg != ''">product_cover_img = #{productCoverImg},</if>
             <if test="productDetailImgs != null">product_detail_imgs = #{productDetailImgs},</if>
             <if test="productDescription != null">product_description = #{productDescription},</if>
+            <if test="stockQuantity != null">stockQuantity = #{stockQuantity},</if>
             <if test="productPrice != null">product_price = #{productPrice},</if>
             <if test="shippingMethod != null and shippingMethod != ''">shipping_method = #{shippingMethod},</if>
             <if test="salesCount != null">sales_count = #{salesCount},</if>

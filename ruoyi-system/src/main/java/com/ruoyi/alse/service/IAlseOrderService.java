@@ -20,6 +20,22 @@ public interface IAlseOrderService
 {
 
     /**
+     * 查询超时未支付订单
+     *
+     * @param timeoutMinutes 超时时间（分钟）
+     * @return 超时订单列表
+     */
+    List<AlseOrder> getTimeoutUnpaidOrders(int timeoutMinutes);
+
+    /**
+     * 取消超时订单
+     *
+     * @param orderId 订单ID
+     * @return 是否成功
+     */
+    boolean cancelTimeoutOrder(Long orderId);
+
+    /**
      * 查询最近一段时间内的待支付订单
      *
      * @param minutes 分钟数，例如30表示近30分钟内

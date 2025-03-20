@@ -20,6 +20,12 @@ public class AlseProductServiceImpl implements IAlseProductService
     @Autowired
     private AlseProductMapper alseProductMapper;
 
+    @Override
+    public AlseProduct selectAlseProductByProductIdForUpdate(Long productId) {
+        return alseProductMapper.selectAlseProductByProductIdForUpdate(productId);
+    }
+
+
     /**
      * 查询商品
      * 

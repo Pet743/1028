@@ -9,8 +9,16 @@ import com.ruoyi.alse.domain.AlseProduct;
  * @author ruoyi
  * @date 2025-03-10
  */
-public interface AlseProductMapper 
+public interface AlseProductMapper
 {
+    /**
+     * 使用行锁查询商品信息
+     *
+     * @param productId 商品ID
+     * @return 商品信息
+     */
+    AlseProduct selectAlseProductByProductIdForUpdate(Long productId);
+
     /**
      * 查询商品
      * 
