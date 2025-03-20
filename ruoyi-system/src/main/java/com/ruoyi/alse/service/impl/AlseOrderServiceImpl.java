@@ -134,7 +134,8 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         // 过滤只保留待付款和待发货的订单
         List<AlseOrder> filteredList = orderList.stream()
                 .filter(order ->
-                        order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode() ||
+                        PaymentMethodEnum.ALIPAY.getCode().equals(order.getPaymentMethod()) &&
+                                order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode() ||
                                 order.getOrderStatus() == OrderStatusEnum.PENDING_SHIPMENT.getCode())
                 .collect(Collectors.toList());
         // 按创建时间降序排序（最新的在前面）
@@ -179,8 +180,8 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         order.setQuantity(1L);
         order.setTotalAmount(totalAmount);
 
-        // 6. 设置支付方式为支付宝(1)
-        order.setPaymentMethod(1); // 支付宝
+        // 6. 设置支付方式为支付宝
+        order.setPaymentMethod(PaymentMethodEnum.ALIPAY.getCode());
 
         // 7. 设置随机买家和卖家信息
         order.setBuyerId(generateRandomUserId());
@@ -589,6 +590,11 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
             }
             if (address == null || !address.getUserId().equals(userId)) {
                 throw new ServiceException("收货地址不存在或不属于当前用户");
+            }
+
+            // 验证买卖家不能为同一人
+            if (userId.equals(product.getPublisherId())) {
+                throw new ServiceException("不能购买自己发布的商品");
             }
 
             // 4. 检查商品状态和库存

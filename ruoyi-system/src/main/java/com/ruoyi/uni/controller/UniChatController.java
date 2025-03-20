@@ -3,7 +3,6 @@ package com.ruoyi.uni.controller;
 import com.ruoyi.alse.service.IAlseChatMessageService;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.uni.model.DTO.request.message.GetConversationRequestDTO;

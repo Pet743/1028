@@ -1,5 +1,7 @@
 package com.ruoyi.uni.controller;
 
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.ruoyi.alse.domain.AlseOrder;
 import com.ruoyi.alse.service.IAlseOrderService;
 import com.ruoyi.common.annotation.CheckToken;
@@ -7,12 +9,8 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
-import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.uni.converter.OrderConverter;
-import com.ruoyi.uni.model.DTO.request.order.CreateOrderRequestDTO;
-import com.ruoyi.uni.model.DTO.request.order.OrderListRequestDTO;
-import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
-import com.ruoyi.uni.model.DTO.request.order.ShipOrderRequestDTO;
+import com.ruoyi.uni.model.DTO.request.order.*;
 import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
@@ -21,16 +19,10 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
-
-import static com.github.pagehelper.page.PageMethod.startPage;
 
 /**
  * 订单管理接口
@@ -40,7 +32,6 @@ import static com.github.pagehelper.page.PageMethod.startPage;
 @RequestMapping("/api/order")
 @Api(tags = "订单管理接口")
 public class UniOrderController {
-
 
     @Autowired
     private IAlseOrderService alseOrderService;
@@ -53,6 +44,9 @@ public class UniOrderController {
     @ApiOperation("创建订单")
     public AjaxResult createOrder(@RequestBody @Validated CreateOrderRequestDTO requestDTO) {
         try {
+            if (requestDTO.getUserId() == null) {
+                return AjaxResult.error("用户ID不能为空");
+            }
 
             // 创建订单并处理支付
             PaymentResultDTO paymentResult = alseOrderService.createOrder(requestDTO, requestDTO.getUserId());
@@ -74,14 +68,31 @@ public class UniOrderController {
      */
     @PostMapping("/list")
     @CheckToken
-    @ApiOperation("获取订单列表")
+    @ApiOperation("获取订单列表(买家）")
     public TableDataInfo getOrderList(@RequestBody OrderListRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            // 获取用户ID
+            Long userId = requestDTO.getUserId();
+            if (userId == null) {
+                TableDataInfo errorData = new TableDataInfo();
+                errorData.setCode(500);
+                errorData.setMsg("用户ID不能为空");
+                return errorData;
+            }
+
+            // 处理分页参数
+            Integer pageNum = requestDTO.getPageNum();
+            Integer pageSize = requestDTO.getPageSize();
+
+            if (pageNum == null || pageNum < 1) {
+                pageNum = 1;
+            }
+            if (pageSize == null || pageSize < 1) {
+                pageSize = 10;
+            }
 
             // 开始分页
-            startPage(requestDTO.getPageNum(), requestDTO.getPageSize());
+            PageHelper.startPage(pageNum, pageSize);
 
             // 构建查询条件
             AlseOrder queryParam = new AlseOrder();
@@ -95,13 +106,24 @@ public class UniOrderController {
             // 查询订单列表
             List<AlseOrder> orderList = alseOrderService.selectAlseOrderList(queryParam);
 
+            // 创建PageInfo对象，用于获取总记录数和页数信息
+            PageInfo<AlseOrder> pageInfo = new PageInfo<>(orderList);
+
+            // 如果当前页码超出总页数且总页数不为0，则返回空列表
+            if (pageNum > pageInfo.getPages() && pageInfo.getPages() > 0) {
+                return getDataTable(new ArrayList<>(), pageInfo.getTotal());
+            }
+
             // 转换为响应DTO
             List<OrderResponseDTO> responseList = OrderConverter.convertToOrderResponseDTOList(orderList);
 
-            return getDataTable(responseList);
+            return getDataTable(responseList, pageInfo.getTotal());
         } catch (Exception e) {
             log.error("获取订单列表失败", e);
-            return getDataTable(null);
+            TableDataInfo errorData = new TableDataInfo();
+            errorData.setCode(500);
+            errorData.setMsg("获取订单列表失败：" + e.getMessage());
+            return errorData;
         }
     }
 
@@ -113,11 +135,28 @@ public class UniOrderController {
     @ApiOperation("获取卖家订单列表")
     public TableDataInfo getSellerOrderList(@RequestBody OrderListRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            // 获取用户ID
+            Long userId = requestDTO.getUserId();
+            if (userId == null) {
+                TableDataInfo errorData = new TableDataInfo();
+                errorData.setCode(500);
+                errorData.setMsg("用户ID不能为空");
+                return errorData;
+            }
+
+            // 处理分页参数
+            Integer pageNum = requestDTO.getPageNum();
+            Integer pageSize = requestDTO.getPageSize();
+
+            if (pageNum == null || pageNum < 1) {
+                pageNum = 1;
+            }
+            if (pageSize == null || pageSize < 1) {
+                pageSize = 10;
+            }
 
             // 开始分页
-            startPage(requestDTO.getPageNum(), requestDTO.getPageSize());
+            PageHelper.startPage(pageNum, pageSize);
 
             // 构建查询条件
             AlseOrder queryParam = new AlseOrder();
@@ -131,13 +170,24 @@ public class UniOrderController {
             // 查询订单列表
             List<AlseOrder> orderList = alseOrderService.selectAlseOrderList(queryParam);
 
+            // 创建PageInfo对象，用于获取总记录数和页数信息
+            PageInfo<AlseOrder> pageInfo = new PageInfo<>(orderList);
+
+            // 如果当前页码超出总页数且总页数不为0，则返回空列表
+            if (pageNum > pageInfo.getPages() && pageInfo.getPages() > 0) {
+                return getDataTable(new ArrayList<>(), pageInfo.getTotal());
+            }
+
             // 转换为响应DTO
             List<OrderResponseDTO> responseList = OrderConverter.convertToOrderResponseDTOList(orderList);
 
-            return getDataTable(responseList);
+            return getDataTable(responseList, pageInfo.getTotal());
         } catch (Exception e) {
             log.error("获取卖家订单列表失败", e);
-            return getDataTable(null);
+            TableDataInfo errorData = new TableDataInfo();
+            errorData.setCode(500);
+            errorData.setMsg("获取卖家订单列表失败：" + e.getMessage());
+            return errorData;
         }
     }
 
@@ -147,10 +197,11 @@ public class UniOrderController {
     @GetMapping("/detail/{orderId}")
     @CheckToken
     @ApiOperation("获取订单详情")
-    public AjaxResult getOrderDetail(@PathVariable Long orderId) {
+    public AjaxResult getOrderDetail(@PathVariable Long orderId, @RequestParam Long userId) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            if (userId == null) {
+                return AjaxResult.error("用户ID不能为空");
+            }
 
             // 查询订单详情
             OrderDetailResponseDTO responseDTO = alseOrderService.getOrderDetail(orderId, userId);
@@ -165,17 +216,18 @@ public class UniOrderController {
     /**
      * 取消订单
      */
-    @PostMapping("/cancel/{orderId}")
+    @PostMapping("/cancel")
     @CheckToken
     @ApiOperation("取消订单")
     @Log(title = "取消订单", businessType = BusinessType.UPDATE)
-    public AjaxResult cancelOrder(@PathVariable Long orderId) {
+    public AjaxResult cancelOrder(@RequestBody CancelOrderRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            if (requestDTO.getUserId() == null || requestDTO.getOrderId() == null) {
+                return AjaxResult.error("用户ID和订单ID不能为空");
+            }
 
             // 取消订单
-            boolean result = alseOrderService.cancelOrder(orderId, userId);
+            boolean result = alseOrderService.cancelOrder(requestDTO.getOrderId(), requestDTO.getUserId());
 
             if (result) {
                 return AjaxResult.success("取消订单成功");
@@ -191,17 +243,18 @@ public class UniOrderController {
     /**
      * 支付订单
      */
-    @PostMapping("/pay/{orderId}")
+    @PostMapping("/pay")
     @CheckToken
     @ApiOperation("支付订单")
     @Log(title = "支付订单", businessType = BusinessType.UPDATE)
-    public AjaxResult payOrder(@PathVariable Long orderId, @RequestBody @Validated PayOrderRequestDTO requestDTO) {
+    public AjaxResult payOrder(@RequestBody @Validated PayOrderRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            if (requestDTO.getUserId() == null || requestDTO.getOrderId() == null) {
+                return AjaxResult.error("用户ID和订单ID不能为空");
+            }
 
             // 支付订单
-            boolean result = alseOrderService.payOrder(orderId, userId, requestDTO);
+            boolean result = alseOrderService.payOrder(requestDTO.getOrderId(), requestDTO.getUserId(), requestDTO);
 
             if (result) {
                 return AjaxResult.success("支付成功");
@@ -217,17 +270,18 @@ public class UniOrderController {
     /**
      * 发货
      */
-    @PostMapping("/ship/{orderId}")
+    @PostMapping("/ship")
     @CheckToken
     @ApiOperation("发货")
     @Log(title = "订单发货", businessType = BusinessType.UPDATE)
-    public AjaxResult shipOrder(@PathVariable Long orderId, @RequestBody @Validated ShipOrderRequestDTO requestDTO) {
+    public AjaxResult shipOrder(@RequestBody @Validated ShipOrderRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            if (requestDTO.getUserId() == null || requestDTO.getOrderId() == null) {
+                return AjaxResult.error("用户ID和订单ID不能为空");
+            }
 
             // 发货
-            boolean result = alseOrderService.shipOrder(orderId, userId, requestDTO);
+            boolean result = alseOrderService.shipOrder(requestDTO.getOrderId(), requestDTO.getUserId(), requestDTO);
 
             if (result) {
                 return AjaxResult.success("发货成功");
@@ -243,17 +297,18 @@ public class UniOrderController {
     /**
      * 确认收货
      */
-    @PostMapping("/confirm/{orderId}")
+    @PostMapping("/confirm")
     @CheckToken
     @ApiOperation("确认收货")
     @Log(title = "确认收货", businessType = BusinessType.UPDATE)
-    public AjaxResult confirmReceipt(@PathVariable Long orderId) {
+    public AjaxResult confirmReceipt(@RequestBody ConfirmReceiptRequestDTO requestDTO) {
         try {
-            // 获取当前登录用户ID
-            Long userId = SecurityUtils.getUserId();
+            if (requestDTO.getUserId() == null || requestDTO.getOrderId() == null) {
+                return AjaxResult.error("用户ID和订单ID不能为空");
+            }
 
             // 确认收货
-            boolean result = alseOrderService.confirmReceipt(orderId, userId);
+            boolean result = alseOrderService.confirmReceipt(requestDTO.getOrderId(), requestDTO.getUserId());
 
             if (result) {
                 return AjaxResult.success("确认收货成功");
@@ -266,13 +321,31 @@ public class UniOrderController {
         }
     }
 
+    /**
+     * 封装分页数据（带总记录数）
+     */
+    protected TableDataInfo getDataTable(List<?> list, long total) {
+        TableDataInfo rspData = new TableDataInfo();
+        rspData.setCode(200);
+        rspData.setRows(list);
+        rspData.setMsg("查询成功");
+        rspData.setTotal(total);
+        return rspData;
+    }
 
+    /**
+     * 封装分页数据（兼容原有方法）
+     */
     protected TableDataInfo getDataTable(List<?> list) {
         TableDataInfo rspData = new TableDataInfo();
         rspData.setCode(200);
         rspData.setRows(list);
         rspData.setMsg("查询成功");
-        rspData.setTotal(new com.github.pagehelper.PageInfo(list).getTotal());
+        if (list != null) {
+            rspData.setTotal(new PageInfo(list).getTotal());
+        } else {
+            rspData.setTotal(0);
+        }
         return rspData;
     }
 }

@@ -1,4 +1,4 @@
-package com.ruoyi.uni.model.DTO.request.order;
+package com.ruoyi.uni.model.DTO.request.payment;
 
 import lombok.Data;
 

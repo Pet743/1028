@@ -9,7 +9,7 @@ import com.ruoyi.alse.service.IAlseOrderService;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.uni.config.AlipayProperties;
-import com.ruoyi.uni.model.DTO.request.order.AlipayNotifyParam;
+import com.ruoyi.uni.model.DTO.request.payment.AlipayNotifyParam;
 import com.ruoyi.uni.model.DTO.request.payment.PaymentRequestDTO;
 import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.service.ALiPaymentService;

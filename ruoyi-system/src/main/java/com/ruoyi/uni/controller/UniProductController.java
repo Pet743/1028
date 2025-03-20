@@ -1,6 +1,7 @@
 package com.ruoyi.uni.controller;
 
 import com.alibaba.fastjson.JSONArray;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -14,6 +15,7 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.utils.PageUtils;
 import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.uni.model.DTO.request.product.BrowsingHistoryItem;
 import com.ruoyi.uni.model.DTO.request.product.ProductBatchOperationDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductPublishDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductQueryDTO;
@@ -227,7 +229,7 @@ public class UniProductController {
      */
     @GetMapping("/detail/{productId}")
     @ApiOperation("商品详情查询")
-    public AjaxResult detail(@PathVariable Long productId) {
+    public AjaxResult detail(@PathVariable Long productId, @RequestParam(required = false) Long userId) {
         if (productId == null) {
             return AjaxResult.error("商品ID不能为空");
         }
@@ -238,6 +240,7 @@ public class UniProductController {
         if (product == null) {
             return AjaxResult.error("商品不存在");
         }
+
         AlseUser user = null;
         if (product.getPublisherId() != null) {
             user = userService.selectAlseUserByUserId(product.getPublisherId());
@@ -277,7 +280,69 @@ public class UniProductController {
         productDetailDTO.setStatus(product.getStatus());
         productDetailDTO.setCreateTime(product.getCreateTime());
         productDetailDTO.setUpdateTime(product.getUpdateTime());
+
+        // 如果提供了用户ID，记录浏览历史
+        if (userId != null) {
+            try {
+                recordBrowsingHistory(userId, product);
+            } catch (Exception e) {
+                log.error("记录浏览历史失败", e);
+                // 记录浏览历史失败不影响主流程
+            }
+        }
+
         return AjaxResult.success(productDetailDTO);
+    }
+
+    /**
+     * 记录用户浏览历史
+     */
+    private void recordBrowsingHistory(Long userId, AlseProduct product) {
+        // 查询用户信息
+        AlseUser user = userService.selectAlseUserByUserId(userId);
+        if (user == null) {
+            return;
+        }
+
+        // 浏览记录项模型
+        BrowsingHistoryItem historyItem = new BrowsingHistoryItem();
+        historyItem.setProductId(product.getProductId());
+        historyItem.setProductTitle(product.getProductTitle());
+        historyItem.setProductCoverImg(product.getProductCoverImg());
+        historyItem.setProductPrice(product.getProductPrice());
+        historyItem.setViewTime(new Date());
+
+        // 获取当前浏览历史
+        String browsingHistoryJson = user.getBrowsingHistory();
+        List<BrowsingHistoryItem> historyList = new ArrayList<>();
+
+        if (StringUtils.isNotEmpty(browsingHistoryJson)) {
+            try {
+                historyList = objectMapper.readValue(browsingHistoryJson,
+                        new TypeReference<List<BrowsingHistoryItem>>() {});
+
+                // 检查是否已存在该商品，如果存在则删除旧记录
+                historyList.removeIf(item -> item.getProductId().equals(product.getProductId()));
+            } catch (Exception e) {
+                log.error("解析浏览历史异常", e);
+            }
+        }
+
+        // 添加新记录到列表最前面（最新的记录在前）
+        historyList.add(0, historyItem);
+
+        // 限制最多保存100条记录
+        if (historyList.size() > 100) {
+            historyList = historyList.subList(0, 100);
+        }
+
+        // 保存更新后的浏览历史
+        try {
+            user.setBrowsingHistory(objectMapper.writeValueAsString(historyList));
+            userService.updateAlseUser(user);
+        } catch (Exception e) {
+            log.error("保存浏览历史异常", e);
+        }
     }
 
 

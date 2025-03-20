@@ -2,6 +2,7 @@ package com.ruoyi.uni.task;
 
 import com.ruoyi.alse.domain.AlseOrder;
 import com.ruoyi.alse.service.IAlseOrderService;
+import com.ruoyi.uni.controller.UniPayController;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -14,8 +15,12 @@ import java.util.List;
 @Component("orderTimeoutTask")
 @Slf4j
 public class OrderTimeoutTask {
+
     @Autowired
     private IAlseOrderService orderService;
+
+    @Autowired
+    private UniPayController uniPayController;
 
     /**
      * 处理超时未支付订单
@@ -51,4 +56,18 @@ public class OrderTimeoutTask {
             log.error("处理超时未支付订单异常", e);
         }
     }
+
+
+    /**
+     * 同步一次订单支付状态（支付宝）
+     * */
+    public void syncAliPayOrderStatus() {
+        log.info("定时任务开始执行：同步订单支付状态");
+        try {
+            uniPayController.syncOrderStatus();
+        } catch (Exception e) {
+            log.error("同步订单支付状态定时任务执行失败", e);
+        }
+    }
+
 }

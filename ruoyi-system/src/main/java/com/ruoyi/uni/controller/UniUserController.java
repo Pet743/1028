@@ -1,5 +1,7 @@
 package com.ruoyi.uni.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.alse.service.IAlseUserService;
 import com.ruoyi.common.annotation.CheckToken;
@@ -7,7 +9,9 @@ import com.ruoyi.common.annotation.NoToken;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.converter.UserConverter;
+import com.ruoyi.uni.model.DTO.request.product.BrowsingHistoryItem;
 import com.ruoyi.uni.model.DTO.request.user.*;
+import com.ruoyi.uni.model.DTO.respone.user.BrowsingHistoryResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.user.UserInfoResponseDTO;
 import com.ruoyi.uni.util.JwtUtil;
 import com.ruoyi.uni.util.SecurityUtils;
@@ -34,6 +38,8 @@ public class UniUserController {
     @Autowired
     private IAlseUserService alseUserService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
     /**
      * 用户注册接口
      */
@@ -407,6 +413,174 @@ public class UniUserController {
         } catch (Exception e) {
             log.error("实名认证失败：", e);
             return AjaxResult.error("实名认证失败，请稍后重试");
+        }
+    }
+
+    // 在UniOrderController类中添加以下接口
+
+    /**
+     * 查询用户浏览记录
+     */
+    @PostMapping("/browsing-history/list")
+    @CheckToken
+    @ApiOperation("查询用户浏览记录")
+    public AjaxResult getBrowsingHistory(@RequestBody BrowsingHistoryQueryDTO queryDTO) {
+        try {
+            if (queryDTO.getUserId() == null) {
+                return AjaxResult.error("用户ID不能为空");
+            }
+
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(queryDTO.getUserId());
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 获取浏览历史
+            String browsingHistoryJson = user.getBrowsingHistory();
+            List<BrowsingHistoryItem> historyList = new ArrayList<>();
+
+            if (StringUtils.isNotEmpty(browsingHistoryJson)) {
+                try {
+                    historyList = objectMapper.readValue(browsingHistoryJson,
+                            new TypeReference<List<BrowsingHistoryItem>>() {});
+                } catch (Exception e) {
+                    log.error("解析浏览历史异常", e);
+                    return AjaxResult.error("解析浏览历史异常");
+                }
+            }
+
+            // 如果指定了天数范围，过滤记录
+            if (queryDTO.getDays() != null && queryDTO.getDays() > 0) {
+                // 计算N天前的时间
+                Calendar calendar = Calendar.getInstance();
+                calendar.add(Calendar.DAY_OF_MONTH, -queryDTO.getDays());
+                Date startDate = calendar.getTime();
+
+                // 过滤记录
+                historyList = historyList.stream()
+                        .filter(item -> item.getViewTime() != null && item.getViewTime().after(startDate))
+                        .collect(Collectors.toList());
+            }
+
+            // 记录总数
+            int total = historyList.size();
+
+            // 分页处理
+            int pageNum = queryDTO.getPageNum();
+            int pageSize = queryDTO.getPageSize();
+
+            if (pageNum <= 0) {
+                pageNum = 1;
+            }
+            if (pageSize <= 0) {
+                pageSize = 10;
+            }
+
+            int fromIndex = (pageNum - 1) * pageSize;
+            int toIndex = Math.min(fromIndex + pageSize, historyList.size());
+
+            // 防止越界
+            if (fromIndex >= historyList.size()) {
+                historyList = new ArrayList<>();
+            } else {
+                historyList = historyList.subList(fromIndex, toIndex);
+            }
+
+            // 构建响应
+            BrowsingHistoryResponseDTO response = new BrowsingHistoryResponseDTO();
+            response.setTotal(total);
+            response.setRecords(historyList);
+
+            return AjaxResult.success(response);
+        } catch (Exception e) {
+            log.error("查询浏览历史失败", e);
+            return AjaxResult.error("查询浏览历史失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除指定浏览记录
+     */
+    @PostMapping("/browsing-history/delete")
+    @CheckToken
+    @ApiOperation("删除指定浏览记录")
+    public AjaxResult deleteBrowsingHistory(@RequestBody DeleteBrowsingHistoryDTO deleteDTO) {
+        try {
+            if (deleteDTO.getUserId() == null) {
+                return AjaxResult.error("用户ID不能为空");
+            }
+            if (deleteDTO.getProductId() == null) {
+                return AjaxResult.error("商品ID不能为空");
+            }
+
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(deleteDTO.getUserId());
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 获取浏览历史
+            String browsingHistoryJson = user.getBrowsingHistory();
+            List<BrowsingHistoryItem> historyList = new ArrayList<>();
+
+            if (StringUtils.isNotEmpty(browsingHistoryJson)) {
+                try {
+                    historyList = objectMapper.readValue(browsingHistoryJson,
+                            new TypeReference<List<BrowsingHistoryItem>>() {});
+
+                    // 移除指定商品记录
+                    boolean removed = historyList.removeIf(item ->
+                            deleteDTO.getProductId().equals(item.getProductId()));
+
+                    if (!removed) {
+                        return AjaxResult.error("未找到指定浏览记录");
+                    }
+
+                    // 保存更新后的浏览历史
+                    user.setBrowsingHistory(objectMapper.writeValueAsString(historyList));
+                    alseUserService.updateAlseUser(user);
+
+                    return AjaxResult.success("删除浏览记录成功");
+                } catch (Exception e) {
+                    log.error("处理浏览历史异常", e);
+                    return AjaxResult.error("处理浏览历史异常");
+                }
+            } else {
+                return AjaxResult.error("用户没有浏览记录");
+            }
+        } catch (Exception e) {
+            log.error("删除浏览记录失败", e);
+            return AjaxResult.error("删除浏览记录失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 清空浏览记录
+     */
+    @PostMapping("/browsing-history/clear")
+    @CheckToken
+    @ApiOperation("清空浏览记录")
+    public AjaxResult clearBrowsingHistory(@RequestBody Long userId) {
+        try {
+            if (userId == null) {
+                return AjaxResult.error("用户ID不能为空");
+            }
+
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(userId);
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 清空浏览历史
+            user.setBrowsingHistory("[]");
+            alseUserService.updateAlseUser(user);
+
+            return AjaxResult.success("清空浏览记录成功");
+        } catch (Exception e) {
+            log.error("清空浏览记录失败", e);
+            return AjaxResult.error("清空浏览记录失败：" + e.getMessage());
         }
     }
 
