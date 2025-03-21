@@ -1,4 +1,4 @@
-package com.ruoyi.uni.model.DTO.request.user;
+package com.ruoyi.uni.model.DTO.request.user.follow;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;

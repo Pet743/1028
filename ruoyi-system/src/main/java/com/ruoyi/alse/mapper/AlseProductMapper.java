@@ -1,7 +1,9 @@
 package com.ruoyi.alse.mapper;
 
+import java.util.Collection;
 import java.util.List;
 import com.ruoyi.alse.domain.AlseProduct;
+import io.lettuce.core.dynamic.annotation.Param;
 
 /**
  * 商品Mapper接口
@@ -11,6 +13,16 @@ import com.ruoyi.alse.domain.AlseProduct;
  */
 public interface AlseProductMapper
 {
+
+    /**
+     * 批量查询商品信息
+     *
+     * @param productIds 商品ID集合
+     * @return 商品信息列表
+     */
+    List<AlseProduct> selectAlseProductByIds(@Param("list") Collection<Long> productIds);
+
+
     /**
      * 使用行锁查询商品信息
      *

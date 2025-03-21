@@ -1,6 +1,5 @@
 package com.ruoyi.uni.controller;
 
-import com.alibaba.fastjson.JSONArray;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageHelper;
@@ -12,13 +11,14 @@ import com.ruoyi.alse.service.IAlseUserService;
 import com.ruoyi.common.annotation.CheckToken;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
-import com.ruoyi.common.utils.PageUtils;
 import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.uni.model.DTO.request.product.BrowsingHistoryItem;
+import com.ruoyi.uni.converter.ProductConverter;
+import com.ruoyi.uni.model.DTO.request.product.FollowProductRequestDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductBatchOperationDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductPublishDTO;
 import com.ruoyi.uni.model.DTO.request.product.ProductQueryDTO;
+import com.ruoyi.uni.model.DTO.request.user.browsing.BrowsingHistoryRecord;
 import com.ruoyi.uni.model.DTO.respone.product.ProductDetailDTO;
 import com.ruoyi.uni.model.DTO.respone.product.ProductListResponseDTO;
 import com.ruoyi.uni.model.Enum.ProductCategoryEnum;
@@ -30,13 +30,10 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import com.alibaba.fastjson.JSON;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -46,13 +43,16 @@ public class UniProductController {
 
 
     @Autowired
-    private IAlseProductService productService;
+    private IAlseProductService alseProductService;
 
     @Autowired
-    private IAlseUserService userService;
+    private IAlseUserService alseUserService;
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProductConverter productConverter;
 
     /**
      * 发布商品
@@ -100,9 +100,12 @@ public class UniProductController {
                 return AjaxResult.error("商品价格格式不正确: " + e.getMessage());
             }
             // 获取发布人信息
-            AlseUser user = userService.selectAlseUserByUserId(publishDTO.getPublisherId());
+            AlseUser user = alseUserService.selectAlseUserByUserId(publishDTO.getPublisherId());
             if (user == null) {
                 return AjaxResult.error("用户不存在");
+            }
+            if (StringUtils.isBlank(user.getIdCardNo())){
+                return AjaxResult.error("用户未完成实名认证");
             }
 
             product.setProductTitle(publishDTO.getProductTitle());
@@ -143,7 +146,7 @@ public class UniProductController {
             product.setUpdateTime(new Date());
 
             // 保存商品
-            int result = productService.insertAlseProduct(product);
+            int result = alseProductService.insertAlseProduct(product);
             if (result > 0) {
                 return AjaxResult.success("发布成功", product.getProductId());
             } else {
@@ -188,7 +191,7 @@ public class UniProductController {
         }
 
         // 查询商品列表
-        List<AlseProduct> productList = productService.selectAlseProductList(query);
+        List<AlseProduct> productList = alseProductService.selectAlseProductList(query);
 
         // 创建PageInfo对象，用于获取总记录数和页数信息
         PageInfo<AlseProduct> pageInfo = new PageInfo<>(productList);
@@ -198,26 +201,8 @@ public class UniProductController {
             return getDataTable(new ArrayList<>(), pageInfo.getTotal());
         }
 
-        // 转换为响应DTO
-        List<ProductListResponseDTO> responseList = productList.stream().map(product -> {
-            ProductListResponseDTO responseDTO = new ProductListResponseDTO();
-            responseDTO.setProductId(product.getProductId());
-            responseDTO.setProductTitle(product.getProductTitle());
-            responseDTO.setProductCoverImg(product.getProductCoverImg());
-            responseDTO.setProductPrice(product.getProductPrice());
-            responseDTO.setSalesCount(product.getSalesCount());
-            responseDTO.setProductRating(product.getProductRating());
-            responseDTO.setShopName(product.getShopName());
-            responseDTO.setPublisherId(product.getPublisherId());
-            responseDTO.setPublisherName(product.getPublisherName());
-            responseDTO.setProductCategory(product.getProductCategory());
-            responseDTO.setCategoryDesc(ProductCategoryEnum.getByCode(product.getProductCategory()).getDesc());
-            responseDTO.setShippingMethod(product.getShippingMethod());
-            responseDTO.setShippingMethodDesc(ShippingMethodEnum.getByCode(product.getShippingMethod()).getDesc());
-            responseDTO.setProductStatus(product.getProductStatus());
-            responseDTO.setCreateTime(product.getCreateTime());
-            return responseDTO;
-        }).collect(Collectors.toList());
+        // 使用转换器批量转换
+        List<ProductListResponseDTO> responseList = productConverter.toProductListResponseDTOList(productList);
 
         // 返回分页结果
         return getDataTable(responseList, pageInfo.getTotal());
@@ -235,7 +220,7 @@ public class UniProductController {
         }
 
         // 查询商品详情
-        AlseProduct product = productService.selectAlseProductByProductId(productId);
+        AlseProduct product = alseProductService.selectAlseProductByProductId(productId);
 
         if (product == null) {
             return AjaxResult.error("商品不存在");
@@ -243,51 +228,36 @@ public class UniProductController {
 
         AlseUser user = null;
         if (product.getPublisherId() != null) {
-            user = userService.selectAlseUserByUserId(product.getPublisherId());
+            user = alseUserService.selectAlseUserByUserId(product.getPublisherId());
         }
-
-        ProductDetailDTO productDetailDTO = new ProductDetailDTO();
-        // 设置用户互动状态（关注和收藏）
-        setUserInteractionStatus(productDetailDTO, product, user);
-
-        productDetailDTO.setProductId(product.getProductId());
-        productDetailDTO.setProductTitle(product.getProductTitle());
-        productDetailDTO.setProductCategory(product.getProductCategory());
-        productDetailDTO.setProductCoverImg(product.getProductCoverImg());
-        // 转换详情图片从JSON到List
+        List<String> detailImgList = null;
         try {
-            if (product.getProductDetailImgs() != null && !product.getProductDetailImgs().isEmpty()) {
-                List<String> detailImgList = objectMapper.readValue(product.getProductDetailImgs(), List.class);
-                productDetailDTO.setDetailImgList(detailImgList);
+            if (StringUtils.isNotEmpty(product.getProductDetailImgs())) {
+                detailImgList = objectMapper.readValue(product.getProductDetailImgs(), List.class);
             }
         } catch (Exception e) {
             log.error("解析商品详情图片异常", e);
         }
 
-        productDetailDTO.setProductDetailImgs(product.getProductDetailImgs());
-        productDetailDTO.setProductDescription(product.getProductDescription());
-        productDetailDTO.setProductPrice(product.getProductPrice());
-        if (user != null) {
-            productDetailDTO.setPublisherImg(user.getAvatar());
-        }
-        productDetailDTO.setShippingMethod(ShippingMethodEnum.getByCode(product.getShippingMethod()).getDesc());
-        productDetailDTO.setSalesCount(product.getSalesCount());
-        productDetailDTO.setProductStatus(product.getProductStatus());
-        productDetailDTO.setPublisherName(product.getPublisherName());
-        productDetailDTO.setPublisherPhone(product.getPublisherPhone());
-        productDetailDTO.setProductRating(product.getProductRating());
-        productDetailDTO.setShopName(product.getShopName());
-        productDetailDTO.setStatus(product.getStatus());
-        productDetailDTO.setCreateTime(product.getCreateTime());
-        productDetailDTO.setUpdateTime(product.getUpdateTime());
+        // 转换为DTO
+        ProductDetailDTO productDetailDTO = productConverter.toProductDetailDTO(product, user, detailImgList);
 
-        // 如果提供了用户ID，记录浏览历史
-        if (userId != null) {
+        // 处理用户相关逻辑
+        if (Objects.nonNull(userId)) {
             try {
-                recordBrowsingHistory(userId, product);
+                AlseUser alseUser = alseUserService.selectAlseUserByUserId(userId);
+                if (alseUser == null) {
+                    return AjaxResult.error("用户不存在");
+                }
+
+                // 设置交互状态
+                setUserInteractionStatus(productDetailDTO, product, alseUser);
+
+                // 记录浏览历史
+                recordBrowsingHistory(alseUser, product);
             } catch (Exception e) {
-                log.error("记录浏览历史失败", e);
-                // 记录浏览历史失败不影响主流程
+                log.error("处理用户相关数据失败", e);
+                // 继续执行，不影响主流程
             }
         }
 
@@ -297,39 +267,50 @@ public class UniProductController {
     /**
      * 记录用户浏览历史
      */
-    private void recordBrowsingHistory(Long userId, AlseProduct product) {
-        // 查询用户信息
-        AlseUser user = userService.selectAlseUserByUserId(userId);
+    private void recordBrowsingHistory(AlseUser user, AlseProduct product) {
         if (user == null) {
             return;
         }
+        // 配置日期格式
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        objectMapper.setDateFormat(dateFormat);
 
-        // 浏览记录项模型
-        BrowsingHistoryItem historyItem = new BrowsingHistoryItem();
-        historyItem.setProductId(product.getProductId());
-        historyItem.setProductTitle(product.getProductTitle());
-        historyItem.setProductCoverImg(product.getProductCoverImg());
-        historyItem.setProductPrice(product.getProductPrice());
-        historyItem.setViewTime(new Date());
+        // 创建新的浏览记录
+        BrowsingHistoryRecord newRecord = new BrowsingHistoryRecord();
+        newRecord.setProductId(product.getProductId());
+        newRecord.setViewTime(new Date());
 
         // 获取当前浏览历史
         String browsingHistoryJson = user.getBrowsingHistory();
-        List<BrowsingHistoryItem> historyList = new ArrayList<>();
+        List<BrowsingHistoryRecord> historyList = new ArrayList<>();
 
         if (StringUtils.isNotEmpty(browsingHistoryJson)) {
             try {
                 historyList = objectMapper.readValue(browsingHistoryJson,
-                        new TypeReference<List<BrowsingHistoryItem>>() {});
+                        new TypeReference<List<BrowsingHistoryRecord>>() {});
 
-                // 检查是否已存在该商品，如果存在则删除旧记录
-                historyList.removeIf(item -> item.getProductId().equals(product.getProductId()));
+                // 检查是否已存在该商品，如果存在则更新浏览时间
+                Optional<BrowsingHistoryRecord> existingRecord = historyList.stream()
+                        .filter(record -> record.getProductId().equals(product.getProductId()))
+                        .findFirst();
+
+                if (existingRecord.isPresent()) {
+                    existingRecord.get().setViewTime(newRecord.getViewTime());
+                    // 将更新的记录移到列表开头
+                    historyList.remove(existingRecord.get());
+                    historyList.add(0, existingRecord.get());
+                } else {
+                    // 添加新记录到列表开头
+                    historyList.add(0, newRecord);
+                }
             } catch (Exception e) {
                 log.error("解析浏览历史异常", e);
+                historyList = new ArrayList<>();
+                historyList.add(newRecord);
             }
+        } else {
+            historyList.add(newRecord);
         }
-
-        // 添加新记录到列表最前面（最新的记录在前）
-        historyList.add(0, historyItem);
 
         // 限制最多保存100条记录
         if (historyList.size() > 100) {
@@ -339,25 +320,22 @@ public class UniProductController {
         // 保存更新后的浏览历史
         try {
             user.setBrowsingHistory(objectMapper.writeValueAsString(historyList));
-            userService.updateAlseUser(user);
+            alseUserService.updateAlseUser(user);
         } catch (Exception e) {
             log.error("保存浏览历史异常", e);
         }
     }
 
-
     /**
      * 判断当前用户是否关注了商品发布者、是否收藏了该商品
      */
-    private void setUserInteractionStatus(ProductDetailDTO productDetailDTO, AlseProduct product, AlseUser currentUser) {
+    private void setUserInteractionStatus(ProductDetailDTO productDetailDTO, AlseProduct product, AlseUser currentUser ) {
+        if (Objects.isNull(currentUser)) {
+            return;
+        }
         // 默认设置为未关注、未收藏
         productDetailDTO.setIsStar(false);
         productDetailDTO.setIsShopStar(false);
-
-        // 如果当前用户未登录，直接返回
-        if (currentUser == null) {
-            return;
-        }
 
         // 获取商品发布者ID
         Long publisherId = product.getPublisherId();
@@ -366,35 +344,35 @@ public class UniProductController {
 
         // 判断是否关注了该用户
         String followedUserIdsJson = currentUser.getFollowedUserIds();
-        if (!StringUtils.isEmpty(followedUserIdsJson)) {
+        if (StringUtils.isNotEmpty(followedUserIdsJson)) {
             try {
-                JSONArray followedUserIds = JSON.parseArray(followedUserIdsJson);
+                // 使用 ObjectMapper 解析JSON数组
+                List<Long> followedUserIds = objectMapper.readValue(followedUserIdsJson,
+                        new TypeReference<List<Long>>() {});
+
                 // 检查发布者ID是否在关注列表中
-                for (int i = 0; i < followedUserIds.size(); i++) {
-                    if (publisherId.equals(followedUserIds.getLong(i))) {
-                        productDetailDTO.setIsStar(true);
-                        break;
-                    }
+                if (followedUserIds.contains(publisherId)) {
+                    productDetailDTO.setIsStar(true);
                 }
             } catch (Exception e) {
-                log.error("解析用户关注列表失败", e);
+                log.error("解析用户关注列表失败: " + followedUserIdsJson, e);
             }
         }
 
         // 判断是否收藏了该商品
         String favoriteProductsJson = currentUser.getFavoriteProducts();
-        if (!StringUtils.isEmpty(favoriteProductsJson)) {
+        if (StringUtils.isNotEmpty(favoriteProductsJson)) {
             try {
-                JSONArray favoriteProducts = JSON.parseArray(favoriteProductsJson);
+                // 使用 ObjectMapper 解析JSON数组
+                List<Long> favoriteProducts = objectMapper.readValue(favoriteProductsJson,
+                        new TypeReference<List<Long>>() {});
+
                 // 检查商品ID是否在收藏列表中
-                for (int i = 0; i < favoriteProducts.size(); i++) {
-                    if (productId.equals(favoriteProducts.getLong(i))) {
-                        productDetailDTO.setIsShopStar(true);
-                        break;
-                    }
+                if (favoriteProducts.contains(productId)) {
+                    productDetailDTO.setIsShopStar(true);
                 }
             } catch (Exception e) {
-                log.error("解析用户收藏商品列表失败", e);
+                log.error("解析用户收藏商品列表失败: " + favoriteProductsJson, e);
             }
         }
     }
@@ -429,7 +407,7 @@ public class UniProductController {
                         // 应用操作
                         operationType.getOperation().accept(product);
                         // 更新并返回结果
-                        return productService.updateAlseProduct(product);
+                        return alseProductService.updateAlseProduct(product);
                     })
                     .reduce(0, Integer::sum);
 
@@ -441,6 +419,81 @@ public class UniProductController {
         } catch (Exception e) {
             log.error("批量操作商品状态异常", e);
             return AjaxResult.error("系统异常，请稍后重试");
+        }
+    }
+
+    /**
+     * 收藏/取消收藏商品接口
+     */
+    @PostMapping("/favorite-product")
+    @CheckToken
+    @ApiOperation("收藏/取消收藏商品")
+    public AjaxResult favoriteProduct(@RequestBody FollowProductRequestDTO requestDTO) {
+        try {
+            // 参数校验
+            if (requestDTO.getUserId() == null || requestDTO.getTargetProductId() == null) {
+                return AjaxResult.error("参数不完整");
+            }
+            // 获取当前用户信息
+            AlseUser currentUser = alseUserService.selectAlseUserByUserId(requestDTO.getUserId());
+            if (currentUser == null) {
+                return AjaxResult.error("用户不存在");
+            }
+            // 验证目标商品是否存在
+            AlseProduct product = alseProductService.selectAlseProductByProductId(requestDTO.getTargetProductId());
+            if (product == null) {
+                return AjaxResult.error("商品不存在");
+            }
+            // 验证不能收藏自己发布的商品
+            if (product.getPublisherId().equals(requestDTO.getUserId())) {
+                return AjaxResult.error("不能收藏自己发布的商品");
+            }
+            // 处理收藏列表
+            String favoriteProductsJson = currentUser.getFavoriteProducts();
+            List<Long> favoriteProductIds = new ArrayList<>();
+            if (StringUtils.isNotEmpty(favoriteProductsJson)) {
+                try {
+                    // 使用ObjectMapper解析JSON
+                    favoriteProductIds = objectMapper.readValue(favoriteProductsJson,
+                            new TypeReference<List<Long>>() {
+                            });
+                } catch (Exception e) {
+                    log.error("解析收藏商品列表异常", e);
+                    // 如果解析失败，初始化为空列表
+                    favoriteProductIds = new ArrayList<>();
+                }
+            }
+            boolean isFavorited = favoriteProductIds.contains(requestDTO.getTargetProductId());
+            // 如果是收藏操作且未收藏，则添加
+            if (requestDTO.isFollow() && !isFavorited) {
+                favoriteProductIds.add(requestDTO.getTargetProductId());
+            }
+            // 如果是取消收藏操作且已收藏，则移除
+            else if (!requestDTO.isFollow() && isFavorited) {
+                favoriteProductIds.remove(requestDTO.getTargetProductId());
+            } else {
+                // 状态已经是目标状态，直接返回成功
+                return AjaxResult.success(requestDTO.isFollow() ? "商品已在收藏列表中" : "商品已不在收藏列表中");
+            }
+            // 更新用户的收藏列表
+            try {
+                String newFavoriteProductsJson = objectMapper.writeValueAsString(favoriteProductIds);
+                currentUser.setFavoriteProducts(newFavoriteProductsJson);
+                currentUser.setUpdateTime(new Date());
+                currentUser.setUpdateBy(currentUser.getUsername());
+                int result = alseUserService.updateAlseUser(currentUser);
+                if (result > 0) {
+                    return AjaxResult.success(requestDTO.isFollow() ? "收藏成功" : "取消收藏成功");
+                } else {
+                    return AjaxResult.error(requestDTO.isFollow() ? "收藏失败" : "取消收藏失败");
+                }
+            } catch (Exception e) {
+                log.error("更新收藏列表失败", e);
+                return AjaxResult.error("操作失败，请稍后重试");
+            }
+        } catch (Exception e) {
+            log.error("收藏/取消收藏操作失败：", e);
+            return AjaxResult.error("操作失败，请稍后重试");
         }
     }
 

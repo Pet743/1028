@@ -28,6 +28,14 @@ public interface AlseUserMapper
     public List<AlseUser> selectAlseUserList(AlseUser alseUser);
 
     /**
+     * 根据用户ID列表查询用户
+     *
+     * @param userIds 用户ID列表
+     * @return 用户信息列表
+     */
+    List<AlseUser> selectAlseUserByUserIds(List<Long> userIds);
+
+    /**
      * 新增用户
      * 
      * @param alseUser 用户

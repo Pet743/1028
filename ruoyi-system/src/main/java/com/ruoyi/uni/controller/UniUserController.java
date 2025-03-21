@@ -2,15 +2,30 @@ package com.ruoyi.uni.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.pagehelper.PageHelper;
+import com.ruoyi.alse.domain.AlseProduct;
 import com.ruoyi.alse.domain.AlseUser;
+import com.ruoyi.alse.mapper.AlseUserMapper;
+import com.ruoyi.alse.service.IAlseProductService;
 import com.ruoyi.alse.service.IAlseUserService;
 import com.ruoyi.common.annotation.CheckToken;
 import com.ruoyi.common.annotation.NoToken;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.converter.UserConverter;
 import com.ruoyi.uni.model.DTO.request.product.BrowsingHistoryItem;
 import com.ruoyi.uni.model.DTO.request.user.*;
+import com.ruoyi.uni.model.DTO.request.user.browsing.BrowsingHistoryQueryDTO;
+import com.ruoyi.uni.model.DTO.request.user.browsing.BrowsingHistoryRecord;
+import com.ruoyi.uni.model.DTO.request.user.browsing.DeleteBrowsingHistoryDTO;
+import com.ruoyi.uni.model.DTO.request.user.browsing.UserIdRequestDTO;
+import com.ruoyi.uni.model.DTO.request.user.follow.BatchUnfollowRequestDTO;
+import com.ruoyi.uni.model.DTO.request.user.follow.FollowUserRequestDTO;
+import com.ruoyi.uni.model.DTO.request.user.follow.UserFollowItemDTO;
+import com.ruoyi.uni.model.DTO.request.user.follow.UserFollowQueryDTO;
 import com.ruoyi.uni.model.DTO.respone.user.BrowsingHistoryResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.user.UserInfoResponseDTO;
 import com.ruoyi.uni.util.JwtUtil;
@@ -26,6 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,7 +55,14 @@ public class UniUserController {
     private IAlseUserService alseUserService;
 
     @Autowired
+    private IAlseProductService alseProductService;
+
+    @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private AlseUserMapper alseUserMapper;
+
     /**
      * 用户注册接口
      */
@@ -416,8 +439,6 @@ public class UniUserController {
         }
     }
 
-    // 在UniOrderController类中添加以下接口
-
     /**
      * 查询用户浏览记录
      */
@@ -426,10 +447,6 @@ public class UniUserController {
     @ApiOperation("查询用户浏览记录")
     public AjaxResult getBrowsingHistory(@RequestBody BrowsingHistoryQueryDTO queryDTO) {
         try {
-            if (queryDTO.getUserId() == null) {
-                return AjaxResult.error("用户ID不能为空");
-            }
-
             // 查询用户信息
             AlseUser user = alseUserService.selectAlseUserByUserId(queryDTO.getUserId());
             if (user == null) {
@@ -438,64 +455,82 @@ public class UniUserController {
 
             // 获取浏览历史
             String browsingHistoryJson = user.getBrowsingHistory();
-            List<BrowsingHistoryItem> historyList = new ArrayList<>();
+            List<BrowsingHistoryRecord> historyRecords = new ArrayList<>();
+            List<BrowsingHistoryItem> resultList = new ArrayList<>();
 
             if (StringUtils.isNotEmpty(browsingHistoryJson)) {
                 try {
-                    historyList = objectMapper.readValue(browsingHistoryJson,
-                            new TypeReference<List<BrowsingHistoryItem>>() {});
+                    // 在方法内创建一个临时的 ObjectMapper 来解析特定格式的日期
+                    ObjectMapper tempMapper = new ObjectMapper();
+                    // 设置日期格式
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    tempMapper.setDateFormat(dateFormat);
+
+                    // 使用这个临时的 mapper 解析 JSON
+                    historyRecords = tempMapper.readValue(browsingHistoryJson,
+                            new TypeReference<List<BrowsingHistoryRecord>>() {});
+
+                    // 如果指定了天数范围，过滤记录
+                    if (queryDTO.getDays() != null && queryDTO.getDays() > 0) {
+                        Calendar calendar = Calendar.getInstance();
+                        calendar.add(Calendar.DAY_OF_MONTH, -queryDTO.getDays());
+                        Date startDate = calendar.getTime();
+
+                        historyRecords = historyRecords.stream()
+                                .filter(record -> record.getViewTime().after(startDate))
+                                .collect(Collectors.toList());
+                    }
+
+                    // 批量查询商品信息
+                    if (!historyRecords.isEmpty()) {
+                        List<Long> productIds = historyRecords.stream()
+                                .map(BrowsingHistoryRecord::getProductId)
+                                .collect(Collectors.toList());
+
+                        // 批量查询商品的方法
+                        List<AlseProduct> products = alseProductService.selectAlseProductByIds(productIds);
+                        Map<Long, AlseProduct> productMap = products.stream()
+                                .collect(Collectors.toMap(AlseProduct::getProductId, p -> p));
+
+                        // 组装完整的浏览记录
+                        for (BrowsingHistoryRecord record : historyRecords) {
+                            AlseProduct product = productMap.get(record.getProductId());
+                            if (product != null) {
+                                BrowsingHistoryItem item = new BrowsingHistoryItem();
+                                item.setProductId(product.getProductId());
+                                item.setProductTitle(product.getProductTitle());
+                                item.setProductCoverImg(product.getProductCoverImg());
+                                item.setProductPrice(product.getProductPrice());
+                                item.setViewTime(record.getViewTime());
+                                resultList.add(item);
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     log.error("解析浏览历史异常", e);
                     return AjaxResult.error("解析浏览历史异常");
                 }
             }
 
-            // 如果指定了天数范围，过滤记录
-            if (queryDTO.getDays() != null && queryDTO.getDays() > 0) {
-                // 计算N天前的时间
-                Calendar calendar = Calendar.getInstance();
-                calendar.add(Calendar.DAY_OF_MONTH, -queryDTO.getDays());
-                Date startDate = calendar.getTime();
-
-                // 过滤记录
-                historyList = historyList.stream()
-                        .filter(item -> item.getViewTime() != null && item.getViewTime().after(startDate))
-                        .collect(Collectors.toList());
-            }
-
-            // 记录总数
-            int total = historyList.size();
-
             // 分页处理
-            int pageNum = queryDTO.getPageNum();
-            int pageSize = queryDTO.getPageSize();
+            int total = resultList.size();
+            int fromIndex = (queryDTO.getPageNum() - 1) * queryDTO.getPageSize();
+            int toIndex = Math.min(fromIndex + queryDTO.getPageSize(), resultList.size());
 
-            if (pageNum <= 0) {
-                pageNum = 1;
-            }
-            if (pageSize <= 0) {
-                pageSize = 10;
-            }
-
-            int fromIndex = (pageNum - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, historyList.size());
-
-            // 防止越界
-            if (fromIndex >= historyList.size()) {
-                historyList = new ArrayList<>();
+            if (fromIndex >= resultList.size()) {
+                resultList = new ArrayList<>();
             } else {
-                historyList = historyList.subList(fromIndex, toIndex);
+                resultList = resultList.subList(fromIndex, toIndex);
             }
 
-            // 构建响应
             BrowsingHistoryResponseDTO response = new BrowsingHistoryResponseDTO();
             response.setTotal(total);
-            response.setRecords(historyList);
+            response.setRecords(resultList);
 
             return AjaxResult.success(response);
         } catch (Exception e) {
             log.error("查询浏览历史失败", e);
-            return AjaxResult.error("查询浏览历史失败：" + e.getMessage());
+            return AjaxResult.error("查询浏览历史失败");
         }
     }
 
@@ -505,15 +540,8 @@ public class UniUserController {
     @PostMapping("/browsing-history/delete")
     @CheckToken
     @ApiOperation("删除指定浏览记录")
-    public AjaxResult deleteBrowsingHistory(@RequestBody DeleteBrowsingHistoryDTO deleteDTO) {
+    public AjaxResult deleteBrowsingHistory(@RequestBody @Validated DeleteBrowsingHistoryDTO deleteDTO) {
         try {
-            if (deleteDTO.getUserId() == null) {
-                return AjaxResult.error("用户ID不能为空");
-            }
-            if (deleteDTO.getProductId() == null) {
-                return AjaxResult.error("商品ID不能为空");
-            }
-
             // 查询用户信息
             AlseUser user = alseUserService.selectAlseUserByUserId(deleteDTO.getUserId());
             if (user == null) {
@@ -522,23 +550,30 @@ public class UniUserController {
 
             // 获取浏览历史
             String browsingHistoryJson = user.getBrowsingHistory();
-            List<BrowsingHistoryItem> historyList = new ArrayList<>();
+            List<BrowsingHistoryRecord> historyList = new ArrayList<>();
 
             if (StringUtils.isNotEmpty(browsingHistoryJson)) {
                 try {
-                    historyList = objectMapper.readValue(browsingHistoryJson,
-                            new TypeReference<List<BrowsingHistoryItem>>() {});
+                    // 在方法内创建一个临时的 ObjectMapper 来解析特定格式的日期
+                    ObjectMapper tempMapper = new ObjectMapper();
+                    // 设置日期格式
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    tempMapper.setDateFormat(dateFormat);
+
+                    // 解析JSON到历史列表 - 这一行是关键
+                    historyList = tempMapper.readValue(browsingHistoryJson,
+                            new TypeReference<List<BrowsingHistoryRecord>>() {});
 
                     // 移除指定商品记录
-                    boolean removed = historyList.removeIf(item ->
-                            deleteDTO.getProductId().equals(item.getProductId()));
+                    boolean removed = historyList.removeIf(record ->
+                            deleteDTO.getProductId().equals(record.getProductId()));
 
                     if (!removed) {
                         return AjaxResult.error("未找到指定浏览记录");
                     }
 
-                    // 保存更新后的浏览历史
-                    user.setBrowsingHistory(objectMapper.writeValueAsString(historyList));
+                    // 保存更新后的浏览历史 - 使用同一个临时mapper确保日期格式一致
+                    user.setBrowsingHistory(tempMapper.writeValueAsString(historyList));
                     alseUserService.updateAlseUser(user);
 
                     return AjaxResult.success("删除浏览记录成功");
@@ -546,12 +581,11 @@ public class UniUserController {
                     log.error("处理浏览历史异常", e);
                     return AjaxResult.error("处理浏览历史异常");
                 }
-            } else {
-                return AjaxResult.error("用户没有浏览记录");
             }
+            return AjaxResult.error("用户没有浏览记录");
         } catch (Exception e) {
             log.error("删除浏览记录失败", e);
-            return AjaxResult.error("删除浏览记录失败：" + e.getMessage());
+            return AjaxResult.error("删除浏览记录失败");
         }
     }
 
@@ -561,14 +595,10 @@ public class UniUserController {
     @PostMapping("/browsing-history/clear")
     @CheckToken
     @ApiOperation("清空浏览记录")
-    public AjaxResult clearBrowsingHistory(@RequestBody Long userId) {
+    public AjaxResult clearBrowsingHistory(@RequestBody @Validated UserIdRequestDTO requestDTO) {
         try {
-            if (userId == null) {
-                return AjaxResult.error("用户ID不能为空");
-            }
-
             // 查询用户信息
-            AlseUser user = alseUserService.selectAlseUserByUserId(userId);
+            AlseUser user = alseUserService.selectAlseUserByUserId(requestDTO.getUserId());
             if (user == null) {
                 return AjaxResult.error("用户不存在");
             }
@@ -580,7 +610,7 @@ public class UniUserController {
             return AjaxResult.success("清空浏览记录成功");
         } catch (Exception e) {
             log.error("清空浏览记录失败", e);
-            return AjaxResult.error("清空浏览记录失败：" + e.getMessage());
+            return AjaxResult.error("清空浏览记录失败");
         }
     }
 
@@ -600,5 +630,191 @@ public class UniUserController {
         }
         String[] result = new String[emptyNames.size()];
         return emptyNames.toArray(result);
+    }
+
+    /**
+     * 查询用户关注列表
+     */
+    @PostMapping("/follows/list")
+    @CheckToken
+    @ApiOperation("查询用户关注列表")
+    public TableDataInfo getUserFollows(@RequestBody @Validated UserFollowQueryDTO queryDTO) {
+        try {
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(queryDTO.getUserId());
+            if (user == null) {
+                throw new ServiceException("用户不存在");
+            }
+
+            // 获取关注用户ID列表
+            String followedUserIdsJson = user.getFollowedUserIds();
+            List<Long> followedUserIds = new ArrayList<>();
+
+            if (StringUtils.isNotEmpty(followedUserIdsJson)) {
+                try {
+                    followedUserIds = objectMapper.readValue(followedUserIdsJson,
+                            new TypeReference<List<Long>>() {});
+                } catch (Exception e) {
+                    log.error("解析关注用户列表异常", e);
+                    throw new ServiceException("解析关注用户列表异常");
+                }
+            }
+
+            if (followedUserIds.isEmpty()) {
+                return getDataTable(new ArrayList<>(), 0);
+            }
+
+            // 分页处理
+            int start = (queryDTO.getPageNum() - 1) * queryDTO.getPageSize();
+            int end = Math.min(start + queryDTO.getPageSize(), followedUserIds.size());
+
+            // 处理页码超出范围情况
+            if (start >= followedUserIds.size()) {
+                return getDataTable(new ArrayList<>(), followedUserIds.size());
+            }
+
+            // 获取当前页的用户ID
+            List<Long> pageUserIds = followedUserIds.subList(start, end);
+
+            // 批量查询用户信息
+            AlseUser queryParam = new AlseUser();
+            Map<String, Object> params = new HashMap<>();
+            params.put("userIds", StringUtils.join(pageUserIds, ","));
+            queryParam.setParams(params);
+            List<AlseUser> userList = alseUserMapper.selectAlseUserByUserIds(pageUserIds);
+
+            // 转换为响应DTO
+            List<UserFollowItemDTO> resultList = new ArrayList<>();
+            for (AlseUser followedUser : userList) {
+                UserFollowItemDTO item = new UserFollowItemDTO();
+                item.setUserId(followedUser.getUserId());
+                item.setAvatar(followedUser.getAvatar());
+                item.setUserName(followedUser.getNickname() != null ?
+                        followedUser.getNickname() : followedUser.getUsername());
+
+                // 脱敏处理联系方式
+                if (StringUtils.isNotEmpty(followedUser.getPhone())) {
+                    item.setContactInfo(maskPhoneNumber(followedUser.getPhone()));
+                } else if (StringUtils.isNotEmpty(followedUser.getEmail())) {
+                    item.setContactInfo(maskEmail(followedUser.getEmail()));
+                } else {
+                    item.setContactInfo("");
+                }
+
+                // 判断是否认证(有身份证号为已认证)
+                item.setIsVerified(StringUtils.isNotEmpty(followedUser.getIdCardNo()));
+
+                resultList.add(item);
+            }
+
+            return getDataTable(resultList, followedUserIds.size());
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("查询用户关注列表失败", e);
+            throw new ServiceException("查询用户关注列表失败");
+        }
+    }
+
+    /**
+     * 批量取消关注
+     */
+    @PostMapping("/follows/batch-unfollow")
+    @CheckToken
+    @ApiOperation("批量取消关注")
+    public AjaxResult batchUnfollow(@RequestBody @Validated BatchUnfollowRequestDTO requestDTO) {
+        try {
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(requestDTO.getUserId());
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 获取当前关注列表
+            String followedUserIdsJson = user.getFollowedUserIds();
+            List<Long> followedUserIds = new ArrayList<>();
+
+            if (StringUtils.isNotEmpty(followedUserIdsJson)) {
+                try {
+                    followedUserIds = objectMapper.readValue(followedUserIdsJson,
+                            new TypeReference<List<Long>>() {});
+                } catch (Exception e) {
+                    log.error("解析关注用户列表异常", e);
+                    return AjaxResult.error("解析关注用户列表异常");
+                }
+            }
+
+            // 如果关注列表为空，直接返回
+            if (followedUserIds.isEmpty()) {
+                return AjaxResult.success("操作成功，但关注列表为空");
+            }
+
+            // 记录原始大小
+            int originalSize = followedUserIds.size();
+
+            // 移除要取消关注的用户
+            followedUserIds.removeAll(requestDTO.getUnfollowUserIds());
+
+            // 如果大小没变化，说明没有取消任何关注
+            if (originalSize == followedUserIds.size()) {
+                return AjaxResult.success("操作成功，但未找到要取消关注的用户");
+            }
+
+            // 更新关注列表
+            try {
+                user.setFollowedUserIds(objectMapper.writeValueAsString(followedUserIds));
+                user.setUpdateTime(new Date());
+                user.setUpdateBy(user.getUsername());
+                alseUserService.updateAlseUser(user);
+
+                return AjaxResult.success("成功取消关注 " + (originalSize - followedUserIds.size()) + " 个用户");
+            } catch (Exception e) {
+                log.error("更新关注列表失败", e);
+                return AjaxResult.error("更新关注列表失败");
+            }
+        } catch (Exception e) {
+            log.error("批量取消关注失败", e);
+            return AjaxResult.error("批量取消关注失败");
+        }
+    }
+
+    /**
+     * 手机号脱敏
+     */
+    private String maskPhoneNumber(String phone) {
+        if (StringUtils.isEmpty(phone) || phone.length() < 8) {
+            return phone;
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+    }
+
+    /**
+     * 邮箱脱敏
+     */
+    private String maskEmail(String email) {
+        if (StringUtils.isEmpty(email) || !email.contains("@")) {
+            return email;
+        }
+        int atIndex = email.indexOf('@');
+        String username = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+
+        if (username.length() <= 2) {
+            return username + "****" + domain;
+        }
+
+        return username.substring(0, 2) + "****" + domain;
+    }
+
+    /**
+     * 封装分页数据
+     */
+    protected TableDataInfo getDataTable(List<?> list, long total) {
+        TableDataInfo rspData = new TableDataInfo();
+        rspData.setCode(200);
+        rspData.setRows(list);
+        rspData.setMsg("查询成功");
+        rspData.setTotal(total);
+        return rspData;
     }
 }

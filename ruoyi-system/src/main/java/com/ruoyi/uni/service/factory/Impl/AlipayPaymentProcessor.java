@@ -6,6 +6,7 @@ import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.uni.model.DTO.request.payment.PaymentRequestDTO;
 import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
+import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
 import com.ruoyi.uni.service.PaymentProcessor;
 import com.ruoyi.uni.service.ALiPaymentService;
@@ -45,7 +46,7 @@ public class AlipayPaymentProcessor implements PaymentProcessor {
             resultDTO.setOrderNo(order.getOrderNo());
             resultDTO.setPaymentMethod(PaymentMethodEnum.ALIPAY.getCode());
             resultDTO.setTotalAmount(order.getTotalAmount());
-            resultDTO.setPaymentStatus(0); // 待支付
+            resultDTO.setPaymentStatus(OrderStatusEnum.PENDING_PAYMENT.getCode()); // 待支付
             resultDTO.setPaymentUrl(paymentUrl);
             resultDTO.setRedirectType(1); // 链接跳转
 

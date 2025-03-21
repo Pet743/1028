@@ -55,11 +55,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
 
+    <select id="selectAlseProductByIds" resultMap="AlseProductResult">
+        <include refid="selectAlseProductVo"/>
+        where product_id in
+        <foreach item="productId" collection="list" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+        and status = '0'
+        order by FIELD(product_id,
+        <foreach item="productId" collection="list" separator=",">
+            #{productId}
+        </foreach>
+        )
+    </select>
+
     <select id="selectAlseProductByProductIdForUpdate" parameterType="Long" resultMap="AlseProductResult">
-        select p.*
-        from alse_product p
-        where p.product_id = #{productId}
-            for update
+        <include refid="selectAlseProductVo"/>
+        where product_id = #{productId}
+        for update
     </select>
     
     <select id="selectAlseProductByProductId" parameterType="Long" resultMap="AlseProductResult">

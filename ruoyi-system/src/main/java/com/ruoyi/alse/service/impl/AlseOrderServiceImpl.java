@@ -10,6 +10,7 @@ import com.ruoyi.alse.domain.*;
 import com.ruoyi.alse.service.*;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.converter.OrderConverter;
 import com.ruoyi.uni.model.DTO.request.order.CreateOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
@@ -682,7 +683,13 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
                 PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
 
                 // 11. 如果是钱包支付或其他直接完成的支付方式，订单状态会在处理器中更新，需要再次保存
-                if (paymentResult.getPaymentStatus() == 2) { // 已支付
+                if (paymentResult.getPaymentStatus() == OrderStatusEnum.PENDING_SHIPMENT.getCode()) { // 已支付
+                    alseOrderMapper.updateAlseOrder(order);
+                }
+
+                // 如果为支付宝支付方式，则保存支付url到收款账号信息
+                if (paymentResult.getPaymentMethod().equals(PaymentMethodEnum.ALIPAY.getCode())) {
+                    order.setReceivingAccount(paymentResult.getPaymentUrl());
                     alseOrderMapper.updateAlseOrder(order);
                 }
 
@@ -704,7 +711,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      * 锁定商品库存（减少库存）
      *
      * @param productId 商品ID
-     * @param quantity 锁定数量
+     * @param quantity  锁定数量
      * @return 是否锁定成功
      */
     @Transactional(rollbackFor = Exception.class)
@@ -751,7 +758,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      * 解锁商品库存（增加库存）
      *
      * @param productId 商品ID
-     * @param quantity 解锁数量
+     * @param quantity  解锁数量
      * @return 是否解锁成功
      */
     @Transactional(rollbackFor = Exception.class)
@@ -915,6 +922,56 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         }
 
         return detailDTO;
+    }
+
+    /**
+     * 重新发起支付
+     */
+    @Override
+    public PaymentResultDTO repayOrder(Long orderId, Long userId) {
+        // 查询订单
+        AlseOrder order = alseOrderMapper.selectAlseOrderByOrderId(orderId);
+
+        // 验证订单
+        if (order == null) {
+            throw new ServiceException("订单不存在");
+        }
+
+        // 验证订单是否属于当前用户
+        if (!order.getBuyerId().equals(userId)) {
+            throw new ServiceException("无权操作此订单");
+        }
+
+        // 验证订单状态是否为待支付
+        if (order.getOrderStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+            throw new ServiceException("订单状态不正确，只有待支付订单可以重新支付");
+        }
+
+        // 如果是支付宝支付且已有支付链接
+        if (PaymentMethodEnum.ALIPAY.getCode().equals(order.getPaymentMethod())
+                && StringUtils.isNotEmpty(order.getReceivingAccount())) {
+            PaymentResultDTO result = new PaymentResultDTO();
+            result.setOrderId(order.getOrderId());
+            result.setOrderNo(order.getOrderNo());
+            result.setPaymentStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
+            result.setPaymentMethod(PaymentMethodEnum.ALIPAY.getCode());
+            result.setPaymentUrl(order.getReceivingAccount());
+            return result;
+        }
+
+        // 如果没有支付链接，重新获取支付处理器生成支付链接
+        AlseUser buyer = alseUserService.selectAlseUserByUserId(userId);
+        AlseProduct product = alseProductService.selectAlseProductByProductId(order.getProductId());
+
+        PaymentProcessor paymentProcessor = paymentProcessorFactory.getProcessor(order.getPaymentMethod());
+        PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
+
+        // 更新订单中的支付链接
+        if (PaymentMethodEnum.ALIPAY.getCode().equals(paymentResult.getPaymentMethod())) {
+            order.setReceivingAccount(paymentResult.getPaymentUrl());
+            alseOrderMapper.updateAlseOrder(order);
+        }
+        return paymentResult;
     }
 
     /**

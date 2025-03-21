@@ -31,7 +31,7 @@ public class UniWalletTransactionController {
 
     @GetMapping("/list")
     @CheckToken
-    @ApiOperation("查询钱包交易流水(Token认证）")
+    @ApiOperation("查询钱包交易流水")
     public TableDataInfo list(WalletTransactionQueryDTO queryDTO) {
         // 使用PageUtils工具类进行分页
         PageUtils.startPage();

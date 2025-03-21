@@ -122,6 +122,12 @@ public interface IAlseOrderService
      */
     public OrderDetailResponseDTO getOrderDetail(Long orderId, Long userId);
 
+
+    /**
+     * 重新发起支付
+     */
+    public PaymentResultDTO repayOrder(Long orderId, Long userId);
+
     /**
      * 查询商品订单
      *

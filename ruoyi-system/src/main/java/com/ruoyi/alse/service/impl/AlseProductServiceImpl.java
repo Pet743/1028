@@ -1,6 +1,10 @@
 package com.ruoyi.alse.service.impl;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+
+import com.github.xiaoymin.knife4j.core.util.CollectionUtils;
 import com.ruoyi.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,15 @@ public class AlseProductServiceImpl implements IAlseProductService
 {
     @Autowired
     private AlseProductMapper alseProductMapper;
+
+
+    @Override
+    public List<AlseProduct> selectAlseProductByIds(Collection<Long> productIds) {
+        if (CollectionUtils.isEmpty(productIds)) {
+            return new ArrayList<>();
+        }
+        return alseProductMapper.selectAlseProductByIds(productIds);
+    }
 
     @Override
     public AlseProduct selectAlseProductByProductIdForUpdate(Long productId) {

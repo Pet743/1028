@@ -72,6 +72,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where user_id = #{userId}
     </select>
 
+    <select id="selectAlseUserByUserIds" resultMap="AlseUserResult">
+        <include refid="selectAlseUserVo"/>
+        where user_id in
+        <foreach item="userId" collection="list" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        and status = '0'
+    </select>
+
     <insert id="insertAlseUser" parameterType="AlseUser" useGeneratedKeys="true" keyProperty="userId">
         insert into alse_user
         <trim prefix="(" suffix=")" suffixOverrides=",">
