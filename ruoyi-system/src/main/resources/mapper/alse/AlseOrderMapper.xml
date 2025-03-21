@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.alse.mapper.AlseOrderMapper">
-    
+
     <resultMap type="AlseOrder" id="AlseOrderResult">
         <result property="orderId"    column="order_id"    />
         <result property="orderNo"    column="order_no"    />
@@ -48,7 +48,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectAlseOrderList" parameterType="AlseOrder" resultMap="AlseOrderResult">
         <include refid="selectAlseOrderVo"/>
-        <where>  
+        <where>
             <if test="orderNo != null  and orderNo != ''"> and order_no = #{orderNo}</if>
             <if test="productId != null "> and product_id = #{productId}</if>
             <if test="productName != null  and productName != ''"> and product_name like concat('%', #{productName}, '%')</if>
@@ -83,7 +83,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
         order by create_time desc
     </select>
-    
+
+    <!-- 统计用户卖出的商品总数 -->
+    <select id="countSoldProductsByUser" resultType="int">
+        SELECT COUNT(1) FROM alse_order
+        WHERE seller_id = #{userId} AND order_status = 4 <!-- 4表示已完成订单 -->
+    </select>
+
+    <!-- 统计用户购买的商品总数 -->
+    <select id="countBoughtProductsByUser" resultType="int">
+        SELECT COUNT(1) FROM alse_order
+        WHERE buyer_id = #{userId} AND order_status = 4 <!-- 4表示已完成订单 -->
+    </select>
+
     <select id="selectAlseOrderByOrderId" parameterType="Long" resultMap="AlseOrderResult">
         <include refid="selectAlseOrderVo"/>
         where order_id = #{orderId}
@@ -126,7 +138,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by,</if>
             <if test="updateTime != null">update_time,</if>
             <if test="remark != null">remark,</if>
-         </trim>
+        </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="orderNo != null and orderNo != ''">#{orderNo},</if>
             <if test="productId != null">#{productId},</if>
@@ -162,7 +174,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">#{updateBy},</if>
             <if test="updateTime != null">#{updateTime},</if>
             <if test="remark != null">#{remark},</if>
-         </trim>
+        </trim>
     </insert>
 
     <update id="updateAlseOrder" parameterType="AlseOrder">
@@ -211,7 +223,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <delete id="deleteAlseOrderByOrderIds" parameterType="String">
-        delete from alse_order where order_id in 
+        delete from alse_order where order_id in
         <foreach item="orderId" collection="array" open="(" separator="," close=")">
             #{orderId}
         </foreach>

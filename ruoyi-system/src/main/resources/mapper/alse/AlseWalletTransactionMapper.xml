@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.alse.mapper.AlseWalletTransactionMapper">
-    
+
     <resultMap type="AlseWalletTransaction" id="AlseWalletTransactionResult">
         <result property="transactionId"    column="transaction_id"    />
         <result property="userId"    column="user_id"    />
@@ -28,7 +28,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectAlseWalletTransactionList" parameterType="AlseWalletTransaction" resultMap="AlseWalletTransactionResult">
         <include refid="selectAlseWalletTransactionVo"/>
-        <where>  
+        <where>
             <if test="userId != null "> and user_id = #{userId}</if>
             <if test="username != null  and username != ''"> and username like concat('%', #{username}, '%')</if>
             <if test="transactionAmount != null "> and transaction_amount = #{transactionAmount}</if>
@@ -46,7 +46,46 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </if>
         </where>
     </select>
-    
+
+    <select id="selectWalletTransactionByCategory" parameterType="java.util.Map" resultMap="AlseWalletTransactionResult">
+        <include refid="selectAlseWalletTransactionVo"/>
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="username != null and username != ''">
+                AND username like concat('%', #{username}, '%')
+            </if>
+            <if test="paymentMethod != null">
+                AND payment_method = #{paymentMethod}
+            </if>
+            <if test="transactionType != null">
+                AND transaction_type = #{transactionType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="beginTransactionTime != null">
+                AND transaction_time &gt;= #{beginTransactionTime}
+            </if>
+            <if test="endTransactionTime != null">
+                AND transaction_time &lt;= #{endTransactionTime}
+            </if>
+            <!-- 收入筛选 -->
+            <if test="transactionCategory != null">
+                <choose>
+                    <when test="transactionCategory == 1">
+                        AND income_amount > 0
+                    </when>
+                    <when test="transactionCategory == 2">
+                        AND expense_amount > 0
+                    </when>
+                </choose>
+            </if>
+        </where>
+        ORDER BY transaction_time DESC
+    </select>
+
     <select id="selectAlseWalletTransactionByTransactionId" parameterType="Long" resultMap="AlseWalletTransactionResult">
         <include refid="selectAlseWalletTransactionVo"/>
         where transaction_id = #{transactionId}
@@ -69,7 +108,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by,</if>
             <if test="updateTime != null">update_time,</if>
             <if test="remark != null">remark,</if>
-         </trim>
+        </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
             <if test="username != null and username != ''">#{username},</if>
@@ -85,7 +124,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">#{updateBy},</if>
             <if test="updateTime != null">#{updateTime},</if>
             <if test="remark != null">#{remark},</if>
-         </trim>
+        </trim>
     </insert>
 
     <update id="updateAlseWalletTransaction" parameterType="AlseWalletTransaction">
@@ -114,7 +153,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <delete id="deleteAlseWalletTransactionByTransactionIds" parameterType="String">
-        delete from alse_wallet_transaction where transaction_id in 
+        delete from alse_wallet_transaction where transaction_id in
         <foreach item="transactionId" collection="array" open="(" separator="," close=")">
             #{transactionId}
         </foreach>

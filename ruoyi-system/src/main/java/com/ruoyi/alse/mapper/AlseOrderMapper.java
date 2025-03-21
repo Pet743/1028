@@ -6,11 +6,11 @@ import io.lettuce.core.dynamic.annotation.Param;
 
 /**
  * 商品订单Mapper接口
- * 
+ *
  * @author ruoyi
  * @date 2025-03-14
  */
-public interface AlseOrderMapper 
+public interface AlseOrderMapper
 {
 
     /**
@@ -31,7 +31,7 @@ public interface AlseOrderMapper
 
     /**
      * 查询商品订单
-     * 
+     *
      * @param orderId 商品订单主键
      * @return 商品订单
      */
@@ -39,7 +39,7 @@ public interface AlseOrderMapper
 
     /**
      * 查询商品订单列表
-     * 
+     *
      * @param alseOrder 商品订单
      * @return 商品订单集合
      */
@@ -47,7 +47,7 @@ public interface AlseOrderMapper
 
     /**
      * 新增商品订单
-     * 
+     *
      * @param alseOrder 商品订单
      * @return 结果
      */
@@ -55,7 +55,7 @@ public interface AlseOrderMapper
 
     /**
      * 修改商品订单
-     * 
+     *
      * @param alseOrder 商品订单
      * @return 结果
      */
@@ -63,7 +63,7 @@ public interface AlseOrderMapper
 
     /**
      * 删除商品订单
-     * 
+     *
      * @param orderId 商品订单主键
      * @return 结果
      */
@@ -71,7 +71,7 @@ public interface AlseOrderMapper
 
     /**
      * 批量删除商品订单
-     * 
+     *
      * @param orderIds 需要删除的数据主键集合
      * @return 结果
      */

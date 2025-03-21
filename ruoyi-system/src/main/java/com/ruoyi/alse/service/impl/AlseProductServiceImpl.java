@@ -14,16 +14,28 @@ import com.ruoyi.alse.service.IAlseProductService;
 
 /**
  * 商品Service业务层处理
- * 
+ *
  * @author ruoyi
  * @date 2025-03-10
  */
 @Service
-public class AlseProductServiceImpl implements IAlseProductService 
+public class AlseProductServiceImpl implements IAlseProductService
 {
     @Autowired
     private AlseProductMapper alseProductMapper;
 
+
+    /**
+     * 统计用户发布的商品总数
+     *
+     * @param userId 用户ID
+     * @return 商品总数
+     */
+    @Override
+    public int countProductsByPublisher(Long userId) {
+        // 使用计数查询优化性能
+        return alseProductMapper.countProductsByPublisher(userId);
+    }
 
     @Override
     public List<AlseProduct> selectAlseProductByIds(Collection<Long> productIds) {
@@ -41,7 +53,7 @@ public class AlseProductServiceImpl implements IAlseProductService
 
     /**
      * 查询商品
-     * 
+     *
      * @param productId 商品主键
      * @return 商品
      */
@@ -53,7 +65,7 @@ public class AlseProductServiceImpl implements IAlseProductService
 
     /**
      * 查询商品列表
-     * 
+     *
      * @param alseProduct 商品
      * @return 商品
      */
@@ -65,7 +77,7 @@ public class AlseProductServiceImpl implements IAlseProductService
 
     /**
      * 新增商品
-     * 
+     *
      * @param alseProduct 商品
      * @return 结果
      */
@@ -78,7 +90,7 @@ public class AlseProductServiceImpl implements IAlseProductService
 
     /**
      * 修改商品
-     * 
+     *
      * @param alseProduct 商品
      * @return 结果
      */
@@ -91,7 +103,7 @@ public class AlseProductServiceImpl implements IAlseProductService
 
     /**
      * 批量删除商品
-     * 
+     *
      * @param productIds 需要删除的商品主键
      * @return 结果
      */
@@ -103,7 +115,7 @@ public class AlseProductServiceImpl implements IAlseProductService
 
     /**
      * 删除商品信息
-     * 
+     *
      * @param productId 商品主键
      * @return 结果
      */
