@@ -2,7 +2,6 @@ package com.ruoyi.alse.mapper;
 
 import java.util.List;
 import com.ruoyi.alse.domain.AlseOrder;
-import io.lettuce.core.dynamic.annotation.Param;
 
 /**
  * 商品订单Mapper接口
@@ -12,23 +11,6 @@ import io.lettuce.core.dynamic.annotation.Param;
  */
 public interface AlseOrderMapper 
 {
-
-    /**
-     * 统计用户卖出的商品总数
-     *
-     * @param userId 用户ID
-     * @return 卖出商品总数
-     */
-    int countSoldProductsByUser(@Param("userId") Long userId);
-
-    /**
-     * 统计用户购买的商品总数
-     *
-     * @param userId 用户ID
-     * @return 购买商品总数
-     */
-    int countBoughtProductsByUser(@Param("userId") Long userId);
-
     /**
      * 查询商品订单
      * 

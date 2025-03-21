@@ -46,45 +46,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </if>
         </where>
     </select>
-
-    <select id="selectWalletTransactionByCategory" parameterType="java.util.Map" resultMap="AlseWalletTransactionResult">
-        <include refid="selectAlseWalletTransactionVo"/>
-        <where>
-            <if test="userId != null">
-                AND user_id = #{userId}
-            </if>
-            <if test="username != null and username != ''">
-                AND username like concat('%', #{username}, '%')
-            </if>
-            <if test="paymentMethod != null">
-                AND payment_method = #{paymentMethod}
-            </if>
-            <if test="transactionType != null">
-                AND transaction_type = #{transactionType}
-            </if>
-            <if test="status != null and status != ''">
-                AND status = #{status}
-            </if>
-            <if test="beginTransactionTime != null">
-                AND transaction_time &gt;= #{beginTransactionTime}
-            </if>
-            <if test="endTransactionTime != null">
-                AND transaction_time &lt;= #{endTransactionTime}
-            </if>
-            <!-- 收入筛选 -->
-            <if test="transactionCategory != null">
-                <choose>
-                    <when test="transactionCategory == 1">
-                        AND income_amount > 0
-                    </when>
-                    <when test="transactionCategory == 2">
-                        AND expense_amount > 0
-                    </when>
-                </choose>
-            </if>
-        </where>
-        ORDER BY transaction_time DESC
-    </select>
     
     <select id="selectAlseWalletTransactionByTransactionId" parameterType="Long" resultMap="AlseWalletTransactionResult">
         <include refid="selectAlseWalletTransactionVo"/>

@@ -25,18 +25,6 @@ public class AlseProductServiceImpl implements IAlseProductService
     private AlseProductMapper alseProductMapper;
 
 
-    /**
-     * 统计用户发布的商品总数
-     *
-     * @param userId 用户ID
-     * @return 商品总数
-     */
-    @Override
-    public int countProductsByPublisher(Long userId) {
-        // 使用计数查询优化性能
-        return alseProductMapper.countProductsByPublisher(userId);
-    }
-
     @Override
     public List<AlseProduct> selectAlseProductByIds(Collection<Long> productIds) {
         if (CollectionUtils.isEmpty(productIds)) {

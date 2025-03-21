@@ -13,14 +13,6 @@ import io.lettuce.core.dynamic.annotation.Param;
  */
 public interface AlseProductMapper
 {
-    /**
-     * 统计用户发布的商品总数
-     *
-     * @param userId 用户ID
-     * @return 商品总数
-     */
-    int countProductsByPublisher(@Param("userId") Long userId);
-
 
     /**
      * 批量查询商品信息

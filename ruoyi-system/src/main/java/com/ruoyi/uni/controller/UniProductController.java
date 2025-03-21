@@ -164,30 +164,47 @@ public class UniProductController {
     @GetMapping("/list")
     @ApiOperation("首页商品查询")
     public TableDataInfo list(ProductQueryDTO queryDTO) {
+        // 获取分页参数
         Integer pageNum = ServletUtils.getParameterToInt("pageNum");
         Integer pageSize = ServletUtils.getParameterToInt("pageSize");
+
+        // 确保分页参数有效
         if (pageNum == null || pageNum < 1) {
             pageNum = 1;
         }
         if (pageSize == null || pageSize < 1) {
-            pageSize = 10;
+            pageSize = 10;  // 默认每页10条
         }
+
+        // 开启分页
         PageHelper.startPage(pageNum, pageSize);
+
+        // 构建查询条件
         AlseProduct query = new AlseProduct();
-        query.setProductStatus("0");
-        query.setStatus("0");
+        query.setProductStatus("0"); // 只查询已上架商品
+        query.setStatus("0"); // 只查询正常状态商品
+
+        // 设置分类查询
         if (queryDTO != null && queryDTO.getCategory() != null && !queryDTO.getCategory().isEmpty()) {
             ProductCategoryEnum categoryEnum = ProductCategoryEnum.getByCode(queryDTO.getCategory());
             query.setProductCategory(categoryEnum.getCode());
         }
+
+        // 查询商品列表
         List<AlseProduct> productList = alseProductService.selectAlseProductList(query);
-        // 对当前分页数据进行随机排序，给用户每次访问产生数据不一样的错觉
-        Collections.shuffle(productList);
+
+        // 创建PageInfo对象，用于获取总记录数和页数信息
         PageInfo<AlseProduct> pageInfo = new PageInfo<>(productList);
+
+        // 如果当前页码超出总页数且总页数不为0，则返回空列表
         if (pageNum > pageInfo.getPages() && pageInfo.getPages() > 0) {
             return getDataTable(new ArrayList<>(), pageInfo.getTotal());
         }
+
+        // 使用转换器批量转换
         List<ProductListResponseDTO> responseList = productConverter.toProductListResponseDTOList(productList);
+
+        // 返回分页结果
         return getDataTable(responseList, pageInfo.getTotal());
     }
 

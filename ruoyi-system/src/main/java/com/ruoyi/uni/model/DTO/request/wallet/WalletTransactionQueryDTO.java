@@ -31,6 +31,5 @@ public class WalletTransactionQueryDTO {
     @ApiModelProperty("自定义天数")
     private Integer customDays;
 
-    @ApiModelProperty("交易类别(0:全部 1:收入 2:支出)")
-    private Integer transactionCategory = 0;
+    // getter和setter方法省略
 }

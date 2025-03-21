@@ -975,28 +975,6 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
     }
 
     /**
-     * 统计用户卖出的商品总数
-     *
-     * @param userId 用户ID
-     * @return 卖出商品总数
-     */
-    @Override
-    public int countSoldProductsByUser(Long userId) {
-        return alseOrderMapper.countSoldProductsByUser(userId);
-    }
-
-    /**
-     * 统计用户购买的商品总数
-     *
-     * @param userId 用户ID
-     * @return 购买商品总数
-     */
-    @Override
-    public int countBoughtProductsByUser(Long userId) {
-        return alseOrderMapper.countBoughtProductsByUser(userId);
-    }
-
-    /**
      * 查询商品订单
      *
      * @param orderId 商品订单主键
