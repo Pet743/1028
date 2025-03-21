@@ -13,7 +13,6 @@ import com.ruoyi.uni.model.DTO.request.message.MessageListRequestDTO;
 import com.ruoyi.uni.model.DTO.request.message.SendMessageRequestDTO;
 import com.ruoyi.uni.model.DTO.respone.message.ConversationResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.message.MessageResponseDTO;
-import com.ruoyi.uni.model.Enum.ConversationTypeEnum;
 import com.ruoyi.uni.model.Enum.MessageContentTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,55 +44,48 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
     private IAlseUserService userService;
 
     /**
-     * 获取或创建与指定用户的会话
+     * 获取或创建聊天会话
      */
     @Override
     @Transactional
     public ConversationResponseDTO getOrCreateConversation(Long userId, Long targetUserId) {
-        if (userId.equals(targetUserId)) {
-            throw new ServiceException("不能与自己聊天");
-        }
-
-        // 查询用户信息
+        // 验证用户
         AlseUser currentUser = userService.selectAlseUserByUserId(userId);
-        AlseUser targetUser = userService.selectAlseUserByUserId(targetUserId);
-
-        if (currentUser == null || targetUser == null) {
+        if (currentUser == null) {
             throw new ServiceException("用户不存在");
         }
 
-        // 尝试查找现有会话
-        AlseChatConversation conversation = conversationMapper.selectAlseChatConversationByUserIds(
-                userId, targetUserId);
+        AlseUser targetUser = userService.selectAlseUserByUserId(targetUserId);
+        if (targetUser == null) {
+            throw new ServiceException("目标用户不存在");
+        }
 
-        // 如果会话不存在，创建一个新会话
+        // 查找现有会话
+        AlseChatConversation conversation = conversationMapper.selectConversationByUsers(userId, targetUserId);
+
+        // 如果会话不存在，创建新会话
         if (conversation == null) {
             conversation = new AlseChatConversation();
-            conversation.setConversationType(ConversationTypeEnum.SINGLE.getCode());
-            // 用户ID小的放在userId1
-            if (userId < targetUserId) {
-                conversation.setUserId1(userId);
-                conversation.setUserId2(targetUserId);
-            } else {
-                conversation.setUserId1(targetUserId);
-                conversation.setUserId2(userId);
-            }
+            conversation.setUserId1(userId);
+            conversation.setUserId2(targetUserId);
+            conversation.setLastMessage("");
+            conversation.setLastMessageTime(DateUtils.getNowDate());
             conversation.setUnreadCount1(0L);
             conversation.setUnreadCount2(0L);
+            conversation.setStatus("0");
+            conversation.setDelFlag("0");
             conversation.setCreateTime(DateUtils.getNowDate());
             conversation.setUpdateTime(DateUtils.getNowDate());
             conversation.setCreateBy(currentUser.getUsername());
             conversation.setUpdateBy(currentUser.getUsername());
-            conversation.setStatus("0");
-            conversation.setDelFlag("0");
 
             conversationMapper.insertAlseChatConversation(conversation);
-            log.info("创建新的聊天会话，conversationId: {}, userId1: {}, userId2: {}",
-                    conversation.getConversationId(), conversation.getUserId1(), conversation.getUserId2());
         }
 
         // 转换为返回对象
-        return UniChatConverter.convertToConversationResponseDTO(conversation, targetUser, userId);
+        return UniChatConverter.convertToConversationResponseDTO(conversation,
+                userId.equals(conversation.getUserId1()) ? targetUser : currentUser,
+                userId.equals(conversation.getUserId1()) ? conversation.getUnreadCount1() : conversation.getUnreadCount2());
     }
 
     /**
@@ -135,23 +127,65 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
     @Override
     @Transactional
     public MessageResponseDTO sendMessage(Long senderId, SendMessageRequestDTO requestDTO) {
-        // 检查会话是否存在
-        AlseChatConversation conversation = conversationMapper.selectAlseChatConversationByConversationId(
-                requestDTO.getConversationId());
+        Long conversationId = requestDTO.getConversationId();
+        Long receiverId = requestDTO.getReceiverId();
 
+        // 检查会话
+        AlseChatConversation conversation = null;
+
+        if (conversationId != null) {
+            // 如果提供了会话ID，检查会话是否存在
+            conversation = conversationMapper.selectAlseChatConversationByConversationId(conversationId);
+        } else {
+            // 如果没有提供会话ID，则尝试查找现有会话
+            conversation = conversationMapper.selectConversationByUsers(senderId, receiverId);
+        }
+
+        // 如果会话不存在，则创建新会话
         if (conversation == null) {
-            throw new ServiceException("会话不存在");
-        }
+            // 查询用户信息
+            AlseUser sender = userService.selectAlseUserByUserId(senderId);
+            if (sender == null) {
+                throw new ServiceException("发送者不存在");
+            }
 
-        // 验证用户是否属于该会话
-        if (!conversation.getUserId1().equals(senderId) && !conversation.getUserId2().equals(senderId)) {
-            throw new ServiceException("您不是该会话的成员");
-        }
+            AlseUser receiver = userService.selectAlseUserByUserId(receiverId);
+            if (receiver == null) {
+                throw new ServiceException("接收者不存在");
+            }
 
-        // 验证接收者是否是会话中的另一个成员
-        if (!conversation.getUserId1().equals(requestDTO.getReceiverId())
-                && !conversation.getUserId2().equals(requestDTO.getReceiverId())) {
-            throw new ServiceException("接收者不是该会话的成员");
+            // 创建新会话
+            conversation = new AlseChatConversation();
+            conversation.setUserId1(senderId);
+            conversation.setUserId2(receiverId);
+            conversation.setLastMessage("");
+            conversation.setLastMessageTime(DateUtils.getNowDate());
+            conversation.setUnreadCount1(0L);
+            conversation.setUnreadCount2(0L);
+            conversation.setStatus("0");
+            conversation.setDelFlag("0");
+            conversation.setCreateTime(DateUtils.getNowDate());
+            conversation.setUpdateTime(DateUtils.getNowDate());
+            conversation.setCreateBy(sender.getUsername());
+            conversation.setUpdateBy(sender.getUsername());
+
+            conversationMapper.insertAlseChatConversation(conversation);
+
+            // 更新会话ID到请求DTO
+            conversationId = conversation.getConversationId();
+            requestDTO.setConversationId(conversationId);
+        } else {
+            conversationId = conversation.getConversationId();
+
+            // 验证用户是否属于该会话
+            if (!conversation.getUserId1().equals(senderId) && !conversation.getUserId2().equals(senderId)) {
+                throw new ServiceException("您不是该会话的成员");
+            }
+
+            // 验证接收者是否是会话中的另一个成员
+            if (!conversation.getUserId1().equals(receiverId) && !conversation.getUserId2().equals(receiverId)) {
+                throw new ServiceException("接收者不是该会话的成员");
+            }
         }
 
         // 查询发送者信息
@@ -162,9 +196,9 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
 
         // 创建消息对象
         AlseChatMessage message = new AlseChatMessage();
-        message.setConversationId(requestDTO.getConversationId());
+        message.setConversationId(conversationId);
         message.setSenderId(senderId);
-        message.setReceiverId(requestDTO.getReceiverId());
+        message.setReceiverId(receiverId);
         message.setContent(requestDTO.getContent());
         message.setContentType(requestDTO.getContentType());
         message.setMediaUrl(requestDTO.getMediaUrl());
@@ -182,17 +216,23 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
 
         // 更新会话最后一条消息
         String displayContent = message.getContent();
-        if (message.getContentType() != MessageContentTypeEnum.TEXT.getCode()) {
+        if (message.getContentType() != null && message.getContentType() != MessageContentTypeEnum.TEXT.getCode()) {
             displayContent = "[" + MessageContentTypeEnum.getDesc(message.getContentType()) + "]";
         }
         conversationMapper.updateLastMessage(
-                conversation.getConversationId(), displayContent, message.getSendTime());
+                conversationId, displayContent, message.getSendTime());
 
         // 增加接收者的未读消息数
-        if (conversation.getUserId1().equals(requestDTO.getReceiverId())) {
-            conversationMapper.increaseUnreadCount(conversation.getConversationId(), conversation.getUserId1());
-        } else {
-            conversationMapper.increaseUnreadCount(conversation.getConversationId(), conversation.getUserId2());
+        try {
+            int rows = conversationMapper.increaseUnreadCount(conversationId, receiverId);
+            if (rows > 0) {
+                log.info("已更新会话{}的未读消息计数，接收者: {}", conversationId, receiverId);
+            } else {
+                log.warn("未读消息计数未更新，可能是会话{}不存在", conversationId);
+            }
+        } catch (Exception e) {
+            // 捕获未读计数更新异常，但不影响消息发送流程
+            log.error("更新未读消息计数失败: {}", e.getMessage(), e);
         }
 
         // 转换为返回对象

@@ -11,22 +11,37 @@ import javax.validation.constraints.NotNull;
 @ApiModel("发送消息请求DTO")
 public class SendMessageRequestDTO {
 
-    @ApiModelProperty("会话ID")
-    @NotNull(message = "会话ID不能为空")
+    /**
+     * 发送者ID
+     */
+    @NotNull(message = "发送者ID不能为空")
+    private Long userId;
+
+    /**
+     * 会话ID (可选，如果为null则自动创建会话)
+     */
     private Long conversationId;
 
-    @ApiModelProperty("接收者ID")
+    /**
+     * 接收者ID
+     */
     @NotNull(message = "接收者ID不能为空")
     private Long receiverId;
 
-    @ApiModelProperty("消息内容")
+    /**
+     * 消息内容
+     */
     @NotBlank(message = "消息内容不能为空")
     private String content;
 
-    @ApiModelProperty("消息类型：0-文本，1-图片，2-语音，3-视频，4-文件")
-    @NotNull(message = "消息类型不能为空")
+    /**
+     * 内容类型
+     */
+    @NotNull(message = "内容类型不能为空")
     private Integer contentType;
 
-    @ApiModelProperty("媒体文件URL（图片/语音/视频/文件消息时必填）")
+    /**
+     * 媒体URL (可选)
+     */
     private String mediaUrl;
 }

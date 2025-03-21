@@ -13,6 +13,15 @@ import com.ruoyi.alse.domain.AlseChatConversation;
  */
 public interface AlseChatConversationMapper 
 {
+
+    /**
+     * 根据两个用户ID查询他们之间的会话
+     *
+     * @param userId1 用户ID1
+     * @param userId2 用户ID2
+     * @return 会话信息
+     */
+    public AlseChatConversation selectConversationByUsers(Long userId1, Long userId2);
     /**
      * 查询聊天会话
      *
@@ -75,14 +84,22 @@ public interface AlseChatConversationMapper
                                  @Param("lastMessageTime") Date lastMessageTime);
 
     /**
-     * 增加指定用户的未读消息数
+     * 增加未读消息计数
      *
      * @param conversationId 会话ID
-     * @param userId 用户ID
-     * @return 结果
+     * @param userIdInConversation 会话中的哪个用户ID (userId1 or userId2)
+     * @param isUser1 是否为user_id1对应的字段
+     * @return 受影响行数
      */
-    public int increaseUnreadCount(@Param("conversationId") Long conversationId, @Param("userId") Long userId);
-
+    /**
+     * 增加未读消息计数
+     *
+     * @param conversationId 会话ID
+     * @param receiverId 接收者ID
+     * @return 受影响行数
+     */
+    public int increaseUnreadCount(@Param("conversationId") Long conversationId,
+                                   @Param("receiverId") Long receiverId);
     /**
      * 清空指定用户的未读消息数
      *

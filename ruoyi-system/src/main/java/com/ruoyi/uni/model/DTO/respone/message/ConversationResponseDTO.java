@@ -41,4 +41,6 @@ public class ConversationResponseDTO {
 
     @ApiModelProperty("未读消息数")
     private Integer unreadCount;
+
+    private Long userId;
 }

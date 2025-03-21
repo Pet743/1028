@@ -9,8 +9,7 @@ import javax.validation.constraints.NotNull;
 @Data
 @ApiModel("标记消息已读请求DTO")
 public class ReadMessageRequestDTO {
-
-    @ApiModelProperty("会话ID")
-    @NotNull(message = "会话ID不能为空")
-    private Long conversationId;
+    private Long userId;           // 当前用户ID
+    private Long conversationId;   // 会话ID
+    private Long targetUserId;     // 对方用户ID（新增字段）
 }

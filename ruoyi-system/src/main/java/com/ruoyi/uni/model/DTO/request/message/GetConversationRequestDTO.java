@@ -13,4 +13,7 @@ public class GetConversationRequestDTO {
     @ApiModelProperty("目标用户ID")
     @NotNull(message = "目标用户ID不能为空")
     private Long targetUserId;
+
+
+    private Long userId;
 }

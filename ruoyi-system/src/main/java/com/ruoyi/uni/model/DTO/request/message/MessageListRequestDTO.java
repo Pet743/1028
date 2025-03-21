@@ -22,4 +22,6 @@ public class MessageListRequestDTO {
 
     @ApiModelProperty("最早消息的ID（用于加载历史消息）")
     private Long beforeMessageId;
+
+    private Long userId;
 }
