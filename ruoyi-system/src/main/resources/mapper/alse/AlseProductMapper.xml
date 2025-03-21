@@ -55,6 +55,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
 
+    <!-- 统计用户发布的商品总数 -->
+    <select id="countProductsByPublisher" resultType="int">
+        SELECT COUNT(1) FROM alse_product WHERE publisher_id = #{userId}
+    </select>
+
     <select id="selectAlseProductByIds" resultMap="AlseProductResult">
         <include refid="selectAlseProductVo"/>
         where product_id in

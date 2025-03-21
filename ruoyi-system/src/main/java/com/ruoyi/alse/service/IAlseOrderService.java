@@ -20,6 +20,22 @@ public interface IAlseOrderService
 {
 
     /**
+     * 统计用户卖出的商品总数
+     *
+     * @param userId 用户ID
+     * @return 卖出商品总数
+     */
+    int countSoldProductsByUser(Long userId);
+
+    /**
+     * 统计用户购买的商品总数
+     *
+     * @param userId 用户ID
+     * @return 购买商品总数
+     */
+    int countBoughtProductsByUser(Long userId);
+
+    /**
      * 查询超时未支付订单
      *
      * @param timeoutMinutes 超时时间（分钟）

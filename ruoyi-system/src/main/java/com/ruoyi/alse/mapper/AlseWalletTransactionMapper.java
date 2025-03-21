@@ -1,6 +1,8 @@
 package com.ruoyi.alse.mapper;
 
 import java.util.List;
+import java.util.Map;
+
 import com.ruoyi.alse.domain.AlseWalletTransaction;
 
 /**
@@ -26,6 +28,14 @@ public interface AlseWalletTransactionMapper
      * @return 钱包交易流水集合
      */
     public List<AlseWalletTransaction> selectAlseWalletTransactionList(AlseWalletTransaction alseWalletTransaction);
+
+    /**
+     * 根据条件查询钱包交易记录（支持收入/支出筛选）
+     *
+     * @param params 查询条件
+     * @return 交易记录列表
+     */
+    List<AlseWalletTransaction> selectWalletTransactionByCategory(Map<String, Object> params);
 
     /**
      * 新增钱包交易流水

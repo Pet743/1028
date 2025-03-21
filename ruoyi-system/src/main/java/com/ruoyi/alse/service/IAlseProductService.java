@@ -15,6 +15,14 @@ public interface IAlseProductService
 {
 
     /**
+     * 统计用户发布的商品总数
+     *
+     * @param userId 用户ID
+     * @return 商品总数
+     */
+    int countProductsByPublisher(Long userId);
+
+    /**
      * 批量查询商品信息
      *
      * @param productIds 商品ID列表

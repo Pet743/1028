@@ -6,6 +6,7 @@ import com.github.pagehelper.PageHelper;
 import com.ruoyi.alse.domain.AlseProduct;
 import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.alse.mapper.AlseUserMapper;
+import com.ruoyi.alse.service.IAlseOrderService;
 import com.ruoyi.alse.service.IAlseProductService;
 import com.ruoyi.alse.service.IAlseUserService;
 import com.ruoyi.common.annotation.CheckToken;
@@ -28,6 +29,8 @@ import com.ruoyi.uni.model.DTO.request.user.follow.UserFollowItemDTO;
 import com.ruoyi.uni.model.DTO.request.user.follow.UserFollowQueryDTO;
 import com.ruoyi.uni.model.DTO.respone.user.BrowsingHistoryResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.user.UserInfoResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.user.UserStatisticsDTO;
+import com.ruoyi.uni.util.FinanceUtils;
 import com.ruoyi.uni.util.JwtUtil;
 import com.ruoyi.uni.util.SecurityUtils;
 import com.ruoyi.uni.util.ValidateUtil;
@@ -62,6 +65,9 @@ public class UniUserController {
 
     @Autowired
     private AlseUserMapper alseUserMapper;
+
+    @Autowired
+    private IAlseOrderService alseOrderService;
 
     /**
      * 用户注册接口
@@ -775,6 +781,103 @@ public class UniUserController {
         } catch (Exception e) {
             log.error("批量取消关注失败", e);
             return AjaxResult.error("批量取消关注失败");
+        }
+    }
+
+    /**
+     * 查询用户统计数据
+     */
+    @GetMapping("/statistics")
+    @CheckToken
+    @ApiOperation("查询用户统计数据")
+    public AjaxResult getUserStatistics(@RequestParam Long userId) {
+        try {
+            // 查询用户信息
+            AlseUser user = alseUserService.selectAlseUserByUserId(userId);
+            if (user == null) {
+                return AjaxResult.error("用户不存在");
+            }
+
+            // 创建响应对象
+            UserStatisticsDTO statistics = new UserStatisticsDTO();
+            statistics.setUserId(userId);
+
+            // 设置钱包余额
+            if (user.getWalletBalance() != null) {
+                statistics.setWalletBalance(FinanceUtils.formatNumber(user.getWalletBalance()));
+            } else {
+                statistics.setWalletBalance("0.00");
+            }
+
+            // 1. 查询发布的商品总数（只查询计数，不查询详细内容）
+            int publishedCount = alseProductService.countProductsByPublisher(userId);
+            statistics.setPublishedProductCount(publishedCount);
+
+            // 2. 查询卖出的商品总数（已完成的订单中的商品数量）
+            int soldCount = alseOrderService.countSoldProductsByUser(userId);
+            statistics.setSoldProductCount(soldCount);
+
+            // 3. 查询购买的商品总数（已完成的订单中作为买家的订单数量）
+            int boughtCount = alseOrderService.countBoughtProductsByUser(userId);
+            statistics.setBoughtProductCount(boughtCount);
+
+            // 4. 查询收藏的商品总数
+            int favoriteCount = 0;
+            if (StringUtils.isNotEmpty(user.getFavoriteProducts())) {
+                try {
+                    List<Long> favoriteIds = objectMapper.readValue(user.getFavoriteProducts(),
+                            new TypeReference<List<Long>>() {});
+                    favoriteCount = favoriteIds.size();
+                } catch (Exception e) {
+                    log.error("解析收藏商品列表异常", e);
+                }
+            }
+            statistics.setFavoriteProductCount(favoriteCount);
+
+            // 5. 查询浏览历史总数
+            int browsingCount = 0;
+            if (StringUtils.isNotEmpty(user.getBrowsingHistory())) {
+                try {
+                    // 在方法内创建一个临时的 ObjectMapper 来解析特定格式的日期
+                    ObjectMapper tempMapper = new ObjectMapper();
+                    // 设置日期格式
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    tempMapper.setDateFormat(dateFormat);
+
+                    List<BrowsingHistoryRecord> records = tempMapper.readValue(user.getBrowsingHistory(),
+                            new TypeReference<List<BrowsingHistoryRecord>>() {});
+                    browsingCount = records.size();
+                } catch (Exception e) {
+                    log.error("解析浏览历史异常", e);
+                    // 尝试使用特定日期格式的解析方式
+                    try {
+                        List<BrowsingHistoryRecord> records = objectMapper.readValue(user.getBrowsingHistory(),
+                                new TypeReference<List<BrowsingHistoryRecord>>() {});
+                        browsingCount = records.size();
+                    } catch (Exception e2) {
+                        log.error("使用特定日期格式解析浏览历史仍然异常", e2);
+                    }
+                }
+            }
+            statistics.setBrowsingHistoryCount(browsingCount);
+
+            // 6. 查询关注的用户总数
+            int followCount = 0;
+            if (StringUtils.isNotEmpty(user.getFollowedUserIds())) {
+                try {
+                    List<Long> followIds = objectMapper.readValue(user.getFollowedUserIds(),
+                            new TypeReference<List<Long>>() {});
+                    followCount = followIds.size();
+                } catch (Exception e) {
+                    log.error("解析关注用户列表异常", e);
+                }
+            }
+            statistics.setFollowedUserCount(followCount);
+
+            return AjaxResult.success(statistics);
+        } catch (Exception e) {
+            log.error("查询用户统计数据失败", e);
+            return AjaxResult.error("查询用户统计数据失败: " + e.getMessage());
         }
     }
 
