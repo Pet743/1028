@@ -11,7 +11,9 @@ import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.uni.converter.UniChatConverter;
 import com.ruoyi.uni.model.DTO.request.message.MessageListRequestDTO;
 import com.ruoyi.uni.model.DTO.request.message.SendMessageRequestDTO;
+import com.ruoyi.uni.model.DTO.respone.message.ConversationListResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.message.ConversationResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.message.MessageListResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.message.MessageResponseDTO;
 import com.ruoyi.uni.model.Enum.MessageContentTypeEnum;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Collections;
-import java.util.stream.Collectors;
 
 /**
  * 聊天服务实现类
@@ -38,10 +38,10 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
     private AlseChatConversationMapper conversationMapper;
 
     @Autowired
-    private AlseChatMessageMapper messageMapper;
+    private AlseChatMessageMapper alseChatMessageMapper;
 
     @Autowired
-    private IAlseUserService userService;
+    private IAlseUserService alseUserService;
 
     /**
      * 获取或创建聊天会话
@@ -49,25 +49,36 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
     @Override
     @Transactional
     public ConversationResponseDTO getOrCreateConversation(Long userId, Long targetUserId) {
+        // 参数验证
+        if (userId == null || targetUserId == null) {
+            throw new ServiceException("用户ID不能为空");
+        }
+
+        if (userId.equals(targetUserId)) {
+            throw new ServiceException("不能与自己创建会话");
+        }
+
         // 验证用户
-        AlseUser currentUser = userService.selectAlseUserByUserId(userId);
+        AlseUser currentUser = alseUserService.selectAlseUserByUserId(userId);
         if (currentUser == null) {
             throw new ServiceException("用户不存在");
         }
 
-        AlseUser targetUser = userService.selectAlseUserByUserId(targetUserId);
+        AlseUser targetUser = alseUserService.selectAlseUserByUserId(targetUserId);
         if (targetUser == null) {
             throw new ServiceException("目标用户不存在");
         }
 
         // 查找现有会话
-        AlseChatConversation conversation = conversationMapper.selectConversationByUsers(userId, targetUserId);
+        log.info("查询用户{}和用户{}之间的会话", userId, targetUserId);
+        AlseChatConversation conversation = conversationMapper.selectConversationBySenderAndReceiver(userId, targetUserId);
 
         // 如果会话不存在，创建新会话
         if (conversation == null) {
+            log.info("未找到现有会话，创建新会话");
             conversation = new AlseChatConversation();
-            conversation.setUserId1(userId);
-            conversation.setUserId2(targetUserId);
+            conversation.setUserId1(userId);         // 当前用户ID设为user_id1
+            conversation.setUserId2(targetUserId);   // 目标用户ID设为user_id2
             conversation.setLastMessage("");
             conversation.setLastMessageTime(DateUtils.getNowDate());
             conversation.setUnreadCount1(0L);
@@ -79,47 +90,26 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
             conversation.setCreateBy(currentUser.getUsername());
             conversation.setUpdateBy(currentUser.getUsername());
 
-            conversationMapper.insertAlseChatConversation(conversation);
+            int rows = conversationMapper.insertAlseChatConversation(conversation);
+            if (rows <= 0) {
+                throw new ServiceException("创建会话失败");
+            }
+            log.info("已创建新会话: {}", conversation.getConversationId());
+        } else {
+            log.info("找到现有会话: {}", conversation.getConversationId());
         }
+
+        // 确定返回对象中的目标用户和未读消息数
+        boolean isCurrentUserIdOne = userId.equals(conversation.getUserId1());
+        Long unreadCount = isCurrentUserIdOne ? conversation.getUnreadCount1() : conversation.getUnreadCount2();
 
         // 转换为返回对象
-        return UniChatConverter.convertToConversationResponseDTO(conversation,
-                userId.equals(conversation.getUserId1()) ? targetUser : currentUser,
-                userId.equals(conversation.getUserId1()) ? conversation.getUnreadCount1() : conversation.getUnreadCount2());
-    }
-
-    /**
-     * 获取用户的会话列表
-     */
-    @Override
-    public List<ConversationResponseDTO> getConversationList(Long userId) {
-        // 查询用户所有的会话
-        List<AlseChatConversation> conversations = conversationMapper.selectAlseChatConversationsByUserId(userId);
-
-        if (conversations.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // 转换为DTO对象
-        List<ConversationResponseDTO> result = new ArrayList<>(conversations.size());
-
-        for (AlseChatConversation conversation : conversations) {
-            // 确定目标用户ID
-            Long targetUserId = conversation.getUserId1().equals(userId)
-                    ? conversation.getUserId2() : conversation.getUserId1();
-
-            // 查询目标用户信息
-            AlseUser targetUser = userService.selectAlseUserByUserId(targetUserId);
-            if (targetUser == null) {
-                continue;
-            }
-
-            // 转换并添加到结果列表
-            result.add(UniChatConverter.convertToConversationResponseDTO(conversation, targetUser, userId));
-        }
+        ConversationResponseDTO result = UniChatConverter.convertToConversationResponseDTO(
+                conversation, targetUser, unreadCount);
 
         return result;
     }
+
 
     /**
      * 发送消息
@@ -144,12 +134,12 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
         // 如果会话不存在，则创建新会话
         if (conversation == null) {
             // 查询用户信息
-            AlseUser sender = userService.selectAlseUserByUserId(senderId);
+            AlseUser sender = alseUserService.selectAlseUserByUserId(senderId);
             if (sender == null) {
                 throw new ServiceException("发送者不存在");
             }
 
-            AlseUser receiver = userService.selectAlseUserByUserId(receiverId);
+            AlseUser receiver = alseUserService.selectAlseUserByUserId(receiverId);
             if (receiver == null) {
                 throw new ServiceException("接收者不存在");
             }
@@ -189,7 +179,7 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
         }
 
         // 查询发送者信息
-        AlseUser sender = userService.selectAlseUserByUserId(senderId);
+        AlseUser sender = alseUserService.selectAlseUserByUserId(senderId);
         if (sender == null) {
             throw new ServiceException("发送者不存在");
         }
@@ -212,7 +202,7 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
         message.setDelFlag("0");
 
         // 保存消息
-        messageMapper.insertAlseChatMessage(message);
+        alseChatMessageMapper.insertAlseChatMessage(message);
 
         // 更新会话最后一条消息
         String displayContent = message.getContent();
@@ -239,54 +229,7 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
         return UniChatConverter.convertToMessageResponseDTO(message, sender, true);
     }
 
-    /**
-     * 获取会话的消息列表
-     */
-    @Override
-    public List<MessageResponseDTO> getMessageList(Long userId, MessageListRequestDTO requestDTO) {
-        // 检查会话是否存在
-        AlseChatConversation conversation = conversationMapper.selectAlseChatConversationByConversationId(
-                requestDTO.getConversationId());
 
-        if (conversation == null) {
-            throw new ServiceException("会话不存在");
-        }
-
-        // 验证用户是否属于该会话
-        if (!conversation.getUserId1().equals(userId) && !conversation.getUserId2().equals(userId)) {
-            throw new ServiceException("您不是该会话的成员");
-        }
-
-        // 查询消息列表
-        List<AlseChatMessage> messages = messageMapper.selectAlseChatMessagesByConversationId(
-                requestDTO.getConversationId(), requestDTO.getBeforeMessageId(), requestDTO.getPageSize());
-
-        if (messages.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // 转换为DTO对象
-        List<MessageResponseDTO> result = new ArrayList<>(messages.size());
-
-        for (AlseChatMessage message : messages) {
-            // 查询发送者信息
-            AlseUser sender = userService.selectAlseUserByUserId(message.getSenderId());
-            if (sender == null) {
-                continue;
-            }
-
-            // 判断消息是否是自己发送的
-            boolean isSelf = message.getSenderId().equals(userId);
-
-            // 转换并添加到结果列表
-            result.add(UniChatConverter.convertToMessageResponseDTO(message, sender, isSelf));
-        }
-
-        // 按发送时间升序排序
-        return result.stream()
-                .sorted((m1, m2) -> m1.getSendTime().compareTo(m2.getSendTime()))
-                .collect(Collectors.toList());
-    }
 
     /**
      * 标记会话消息为已读
@@ -308,7 +251,7 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
 
         // 更新消息已读状态
         Date now = DateUtils.getNowDate();
-        int count = messageMapper.updateMessagesReadStatus(conversationId, userId, now);
+        int count = alseChatMessageMapper.updateMessagesReadStatus(conversationId, userId, now);
 
         // 清空未读消息计数
         if (conversation.getUserId1().equals(userId)) {
@@ -318,5 +261,39 @@ public class AlseChatMessageServiceImpl implements IAlseChatMessageService {
         }
 
         return count;
+    }
+
+    /**
+     * 获取会话消息列表
+     *
+     * @param requestDTO 消息列表请求
+     * @return 消息列表
+     */
+    @Override
+    public List<MessageListResponseDTO> getMessageList(MessageListRequestDTO requestDTO) {
+        // 查询消息列表
+        List<AlseChatMessage> messageList = alseChatMessageMapper.selectMessageList(requestDTO);
+
+        // 转换为响应DTO
+        Long currentUserId = requestDTO.getUserId();
+        List<MessageListResponseDTO> resultList = new ArrayList<>();
+
+        for (AlseChatMessage message : messageList) {
+            MessageListResponseDTO dto = UniChatConverter.convertToMessageDTO(message);
+
+            // 查询并设置发送者信息
+            AlseUser sender = alseUserService.selectAlseUserByUserId(message.getSenderId());
+            if (sender != null) {
+                dto.setSenderName(sender.getNickname());
+                dto.setSenderAvatar(sender.getAvatar());
+            }
+
+            // 判断是否是当前用户发送的
+            dto.setIsMine(currentUserId.equals(message.getSenderId()));
+
+            resultList.add(dto);
+        }
+
+        return resultList;
     }
 }

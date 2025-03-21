@@ -85,6 +85,51 @@
         where product_id = #{productId}
     </select>
 
+    <!-- 商品模糊搜索 -->
+    <select id="searchProducts" parameterType="String" resultMap="AlseProductResult">
+        select
+        p.product_id,
+        p.product_title,
+        p.product_category,
+        p.product_cover_img,
+        p.product_detail_imgs,
+        p.product_description,
+        p.stockQuantity,
+        p.product_price,
+        p.shipping_method,
+        p.sales_count,
+        p.product_rating,
+        p.shop_name,
+        p.publisher_id,
+        p.publisher_name,
+        p.publisher_phone,
+        p.create_time,
+        p.update_time,
+        p.product_status,
+        p.status,
+        p.create_by,
+        p.update_by,
+        p.remark
+        from alse_product p
+        <where>
+            <!-- 删除了del_flag条件，因为表中不存在这个列 -->
+            <if test="true">
+                p.product_status = '0'
+            </if>
+            <if test="true">
+                AND p.status = '0'
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                p.product_title like concat('%', #{keyword}, '%')
+                OR p.product_description like concat('%', #{keyword}, '%')
+                OR p.product_category like concat('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+        order by p.create_time desc
+    </select>
+
     <insert id="insertAlseProduct" parameterType="AlseProduct" useGeneratedKeys="true" keyProperty="productId">
         insert into alse_product
         <trim prefix="(" suffix=")" suffixOverrides=",">

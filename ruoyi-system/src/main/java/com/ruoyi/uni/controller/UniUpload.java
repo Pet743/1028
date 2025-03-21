@@ -28,7 +28,7 @@ public class UniUpload {
             String filePath = RuoYiConfig.getUploadPath();
             // 上传并返回新文件名称
             String fileName = FileUploadUtils.upload(filePath, file);
-            String url = "http://192.168.17.3:8090" + fileName;
+            String url = "http://www.1w1w1.com/api" + fileName;
             AjaxResult ajax = AjaxResult.success();
             ajax.put("url", url);
             ajax.put("fileName", fileName);

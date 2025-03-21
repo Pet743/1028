@@ -2,6 +2,7 @@ package com.ruoyi.alse.service;
 
 import java.util.List;
 import com.ruoyi.alse.domain.AlseChatConversation;
+import com.ruoyi.uni.model.DTO.respone.message.ConversationListResponseDTO;
 
 /**
  * 聊天会话Service接口
@@ -11,6 +12,17 @@ import com.ruoyi.alse.domain.AlseChatConversation;
  */
 public interface IAlseChatConversationService 
 {
+
+
+    /**
+     * 获取用户会话列表
+     *
+     * @param userId 用户ID
+     * @return 会话列表
+     */
+    List<ConversationListResponseDTO> getConversationList(Long userId);
+
+
     /**
      * 查询聊天会话
      * 

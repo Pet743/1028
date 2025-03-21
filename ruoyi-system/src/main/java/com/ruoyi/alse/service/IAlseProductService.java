@@ -47,6 +47,14 @@ public interface IAlseProductService
     public AlseProduct selectAlseProductByProductId(Long productId);
 
     /**
+     * 模糊搜索商品
+     *
+     * @param keyword 关键词
+     * @return 商品列表
+     */
+    List<AlseProduct> searchProducts(String keyword);
+
+    /**
      * 查询商品列表
      *
      * @param alseProduct 商品

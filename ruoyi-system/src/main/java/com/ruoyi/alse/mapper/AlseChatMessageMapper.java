@@ -2,7 +2,10 @@ package com.ruoyi.alse.mapper;
 
 import java.util.List;
 import java.util.Date;
+
+import com.ruoyi.alse.domain.AlseChatConversation;
 import com.ruoyi.alse.domain.AlseChatMessage;
+import com.ruoyi.uni.model.DTO.request.message.MessageListRequestDTO;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -13,6 +16,35 @@ import org.apache.ibatis.annotations.Param;
  */
 public interface AlseChatMessageMapper 
 {
+
+
+
+    /**
+     * 查询会话消息列表
+     *
+     * @param requestDTO 查询条件
+     * @return 消息列表
+     */
+    List<AlseChatMessage> selectMessageList(MessageListRequestDTO requestDTO);
+
+    /**
+     * 根据会话ID查询最新消息
+     *
+     * @param conversationId 会话ID
+     * @return 消息列表
+     */
+    List<AlseChatMessage> selectLatestMessagesByConversationId(Long conversationId);
+
+    /**
+     * 根据会话ID和消息ID查询历史消息（ID小于给定值的消息）
+     *
+     * @param conversationId 会话ID
+     * @param messageId 消息ID
+     * @return
+     */
+    List<AlseChatMessage> selectMessagesByConversationIdAndBeforeId(@Param("conversationId") Long conversationId,
+                                                                    @Param("messageId") Long messageId);
+
     /**
      * 查询聊天消息
      *

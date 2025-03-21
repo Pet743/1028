@@ -6,6 +6,7 @@ import com.ruoyi.alse.domain.AlseChatMessage;
 import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.model.DTO.respone.message.ConversationResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.message.MessageListResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.message.MessageResponseDTO;
 
 /**
@@ -64,6 +65,29 @@ public class UniChatConverter {
         dto.setReadStatus(message.getReadStatus());
         dto.setIsSelf(isSelf);
         dto.setSendTime(message.getSendTime());
+
+        return dto;
+    }
+
+    /**
+     * 转换为消息DTO
+     *
+     * @param message 消息对象
+     * @return 消息DTO
+     */
+    public static MessageListResponseDTO convertToMessageDTO(AlseChatMessage message) {
+        if (message == null) {
+            return null;
+        }
+
+        MessageListResponseDTO dto = new MessageListResponseDTO();
+        dto.setMessageId(message.getMessageId());
+        dto.setSenderId(message.getSenderId());
+        dto.setContent(message.getContent());
+        dto.setContentType(message.getContentType());
+        dto.setMediaUrl(message.getMediaUrl());
+        dto.setSendTime(message.getSendTime());
+        dto.setReadStatus(message.getReadStatus());
 
         return dto;
     }

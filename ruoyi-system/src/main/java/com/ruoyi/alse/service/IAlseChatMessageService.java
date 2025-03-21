@@ -4,7 +4,9 @@ import java.util.List;
 import com.ruoyi.alse.domain.AlseChatMessage;
 import com.ruoyi.uni.model.DTO.request.message.MessageListRequestDTO;
 import com.ruoyi.uni.model.DTO.request.message.SendMessageRequestDTO;
+import com.ruoyi.uni.model.DTO.respone.message.ConversationListResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.message.ConversationResponseDTO;
+import com.ruoyi.uni.model.DTO.respone.message.MessageListResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.message.MessageResponseDTO;
 
 /**
@@ -15,6 +17,7 @@ import com.ruoyi.uni.model.DTO.respone.message.MessageResponseDTO;
  */
 public interface IAlseChatMessageService 
 {
+
     /**
      * 获取或创建与指定用户的会话
      *
@@ -25,12 +28,12 @@ public interface IAlseChatMessageService
     ConversationResponseDTO getOrCreateConversation(Long userId, Long targetUserId);
 
     /**
-     * 获取用户的会话列表
+     * 获取会话消息列表
      *
-     * @param userId 用户ID
-     * @return 会话列表
+     * @param requestDTO 消息列表请求
+     * @return 消息列表
      */
-    List<ConversationResponseDTO> getConversationList(Long userId);
+    List<MessageListResponseDTO>getMessageList(MessageListRequestDTO requestDTO);
 
     /**
      * 发送消息
@@ -41,14 +44,6 @@ public interface IAlseChatMessageService
      */
     MessageResponseDTO sendMessage(Long senderId, SendMessageRequestDTO requestDTO);
 
-    /**
-     * 获取会话的消息列表
-     *
-     * @param userId 当前用户ID
-     * @param requestDTO 获取消息请求
-     * @return 消息列表
-     */
-    List<MessageResponseDTO> getMessageList(Long userId, MessageListRequestDTO requestDTO);
 
     /**
      * 标记会话消息为已读

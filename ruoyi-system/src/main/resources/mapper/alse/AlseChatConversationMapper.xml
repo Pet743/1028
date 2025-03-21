@@ -40,6 +40,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             LIMIT 1
     </select>
 
+    <!-- 查询用户相关的所有会话 -->
+    <select id="selectUserConversations" parameterType="java.lang.Long" resultMap="AlseChatConversationResult">
+        select c.conversation_id, c.conversation_type, c.name,
+               c.user_id_1, c.user_id_2, c.last_message,
+               c.last_message_time, c.unread_count_1, c.unread_count_2
+        from alse_chat_conversation c
+        where (c.user_id_1 = #{userId} or c.user_id_2 = #{userId})
+          and c.del_flag = '0'
+        order by c.last_message_time desc
+    </select>
+
+    <!-- 重置用户1的未读消息计数 -->
+    <update id="resetUnreadCount1" parameterType="Long">
+        update alse_chat_conversation
+        set unread_count_1 = 0,
+            update_time = sysdate()
+        where conversation_id = #{conversationId}
+    </update>
+
+    <!-- 重置用户2的未读消息计数 -->
+    <update id="resetUnreadCount2" parameterType="Long">
+        update alse_chat_conversation
+        set unread_count_2 = 0,
+            update_time = sysdate()
+        where conversation_id = #{conversationId}
+    </update>
+
     <select id="selectAlseChatConversationByConversationId" parameterType="Long" resultMap="AlseChatConversationResult">
         <include refid="selectAlseChatConversationVo"/>
         where conversation_id = #{conversationId} and del_flag = '0'
@@ -75,6 +102,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null  and status != ''"> and status = #{status}</if>
         </where>
         order by last_message_time desc
+    </select>
+
+    <!-- 根据发送者和接收者ID查询会话 -->
+    <select id="selectConversationBySenderAndReceiver" resultMap="AlseChatConversationResult">
+        SELECT c.*
+        FROM alse_chat_conversation c
+        WHERE (
+                (c.user_id_1 = #{senderId} AND c.user_id_2 = #{receiverId})
+                OR
+                (c.user_id_1 = #{receiverId} AND c.user_id_2 = #{senderId})
+            )
+          AND c.del_flag = '0'
+          AND c.status = '0'
+            LIMIT 1
     </select>
 
     <insert id="insertAlseChatConversation" parameterType="AlseChatConversation" useGeneratedKeys="true" keyProperty="conversationId">

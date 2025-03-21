@@ -44,6 +44,36 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </if>
     </select>
 
+
+
+    <select id="selectMessageList" parameterType="com.ruoyi.uni.model.DTO.request.message.MessageListRequestDTO" resultMap="AlseChatMessageResult">
+        select m.message_id, m.conversation_id, m.sender_id, m.receiver_id,
+               m.content, m.content_type, m.media_url, m.read_status,
+               m.send_time, m.read_time, m.status
+        from alse_chat_message m
+        where m.conversation_id = #{conversationId}
+          and m.del_flag = '0'
+        order by m.send_time desc
+    </select>
+
+    <!-- 根据会话ID查询最新消息 -->
+    <select id="selectLatestMessagesByConversationId" parameterType="Long" resultMap="AlseChatMessageResult">
+        <include refid="selectAlseChatMessageVo"/>
+        where conversation_id = #{conversationId} and del_flag = '0'
+        order by message_id desc
+        limit 20
+    </select>
+
+    <!-- 根据会话ID和消息ID查询历史消息 -->
+    <select id="selectMessagesByConversationIdAndBeforeId" resultMap="AlseChatMessageResult">
+        <include refid="selectAlseChatMessageVo"/>
+        where conversation_id = #{conversationId}
+        and message_id &lt; #{messageId}
+        and del_flag = '0'
+        order by message_id desc
+        limit 20
+    </select>
+
     <select id="selectAlseChatMessageList" parameterType="AlseChatMessage" resultMap="AlseChatMessageResult">
         <include refid="selectAlseChatMessageVo"/>
         <where>

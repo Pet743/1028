@@ -2,6 +2,8 @@ package com.ruoyi.alse.mapper;
 
 import java.util.List;
 import java.util.Date;
+
+import com.ruoyi.alse.domain.AlseChatMessage;
 import org.apache.ibatis.annotations.Param;
 import com.ruoyi.alse.domain.AlseChatConversation;
 
@@ -22,6 +24,33 @@ public interface AlseChatConversationMapper
      * @return 会话信息
      */
     public AlseChatConversation selectConversationByUsers(Long userId1, Long userId2);
+
+
+    /**
+     * 查询用户相关的所有会话
+     *
+     * @param userId 用户ID
+     * @return 会话列表
+     */
+    List<AlseChatConversation> selectUserConversations(Long userId);
+
+    /**
+     * 重置用户1的未读消息计数
+     *
+     * @param conversationId 会话ID
+     * @return 影响行数
+     */
+    int resetUnreadCount1(Long conversationId);
+
+    /**
+     * 重置用户2的未读消息计数
+     *
+     * @param conversationId 会话ID
+     * @return 影响行数
+     */
+    int resetUnreadCount2(Long conversationId);
+
+
     /**
      * 查询聊天会话
      *
@@ -56,12 +85,24 @@ public interface AlseChatConversationMapper
     public List<AlseChatConversation> selectAlseChatConversationList(AlseChatConversation alseChatConversation);
 
     /**
-     * 新增聊天会话
+     * 根据发送者和接收者ID查询他们之间的会话
+     * (支持ID互换情况的查询)
      *
-     * @param alseChatConversation 聊天会话
-     * @return 结果
+     * @param senderId 发送者ID
+     * @param receiverId 接收者ID
+     * @return 会话信息
      */
-    public int insertAlseChatConversation(AlseChatConversation alseChatConversation);
+    AlseChatConversation selectConversationBySenderAndReceiver(
+            @Param("senderId") Long senderId,
+            @Param("receiverId") Long receiverId);
+
+    /**
+     * 插入会话
+     *
+     * @param conversation 会话对象
+     * @return 影响行数
+     */
+    int insertAlseChatConversation(AlseChatConversation conversation);
 
     /**
      * 修改聊天会话

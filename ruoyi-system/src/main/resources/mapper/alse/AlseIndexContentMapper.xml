@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.alse.mapper.AlseIndexContentMapper">
+    
+    <resultMap type="AlseIndexContent" id="AlseIndexContentResult">
+        <result property="contentId"    column="content_id"    />
+        <result property="contentType"    column="content_type"    />
+        <result property="title"    column="title"    />
+        <result property="content"    column="content"    />
+        <result property="imageUrl"    column="image_url"    />
+        <result property="linkUrl"    column="link_url"    />
+        <result property="sortOrder"    column="sort_order"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="endTime"    column="end_time"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="status"    column="status"    />
+        <result property="delFlag"    column="del_flag"    />
+    </resultMap>
+
+    <sql id="selectAlseIndexContentVo">
+        select content_id, content_type, title, content, image_url, link_url, sort_order, start_time, end_time, create_time, update_time, create_by, update_by, status, del_flag from alse_index_content
+    </sql>
+
+    <select id="selectAlseIndexContentList" parameterType="AlseIndexContent" resultMap="AlseIndexContentResult">
+        <include refid="selectAlseIndexContentVo"/>
+        <where>  
+            <if test="contentType != null "> and content_type = #{contentType}</if>
+            <if test="title != null  and title != ''"> and title = #{title}</if>
+            <if test="content != null  and content != ''"> and content = #{content}</if>
+            <if test="imageUrl != null  and imageUrl != ''"> and image_url = #{imageUrl}</if>
+            <if test="linkUrl != null  and linkUrl != ''"> and link_url = #{linkUrl}</if>
+            <if test="sortOrder != null "> and sort_order = #{sortOrder}</if>
+            <if test="startTime != null "> and start_time = #{startTime}</if>
+            <if test="endTime != null "> and end_time = #{endTime}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectAlseIndexContentByContentId" parameterType="Long" resultMap="AlseIndexContentResult">
+        <include refid="selectAlseIndexContentVo"/>
+        where content_id = #{contentId}
+    </select>
+
+    <insert id="insertAlseIndexContent" parameterType="AlseIndexContent" useGeneratedKeys="true" keyProperty="contentId">
+        insert into alse_index_content
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="contentType != null">content_type,</if>
+            <if test="title != null">title,</if>
+            <if test="content != null">content,</if>
+            <if test="imageUrl != null">image_url,</if>
+            <if test="linkUrl != null">link_url,</if>
+            <if test="sortOrder != null">sort_order,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="status != null">status,</if>
+            <if test="delFlag != null">del_flag,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="contentType != null">#{contentType},</if>
+            <if test="title != null">#{title},</if>
+            <if test="content != null">#{content},</if>
+            <if test="imageUrl != null">#{imageUrl},</if>
+            <if test="linkUrl != null">#{linkUrl},</if>
+            <if test="sortOrder != null">#{sortOrder},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="status != null">#{status},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAlseIndexContent" parameterType="AlseIndexContent">
+        update alse_index_content
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="contentType != null">content_type = #{contentType},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="linkUrl != null">link_url = #{linkUrl},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+        </trim>
+        where content_id = #{contentId}
+    </update>
+
+    <delete id="deleteAlseIndexContentByContentId" parameterType="Long">
+        delete from alse_index_content where content_id = #{contentId}
+    </delete>
+
+    <delete id="deleteAlseIndexContentByContentIds" parameterType="String">
+        delete from alse_index_content where content_id in 
+        <foreach item="contentId" collection="array" open="(" separator="," close=")">
+            #{contentId}
+        </foreach>
+    </delete>
+</mapper>
