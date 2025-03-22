@@ -81,18 +81,18 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="收款方式(1:支付宝 2:微信 3:银行卡)" prop="paymentMethod">
+      <el-form-item label="默认收款方式(1:支付宝 2:微信 3:银行卡)" prop="paymentMethod">
         <el-input
           v-model="queryParams.paymentMethod"
-          placeholder="请输入收款方式(1:支付宝 2:微信 3:银行卡)"
+          placeholder="请输入默认收款方式(1:支付宝 2:微信 3:银行卡)"
           clearable
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="收款账号" prop="paymentAccount">
+      <el-form-item label="绑定的收款方式(JSON格式）" prop="paymentMethodIds">
         <el-input
-          v-model="queryParams.paymentAccount"
-          placeholder="请输入收款账号"
+          v-model="queryParams.paymentMethodIds"
+          placeholder="请输入绑定的收款方式(JSON格式）"
           clearable
           @keyup.enter.native="handleQuery"
         />
@@ -202,8 +202,9 @@
       <el-table-column label="身份证正面图片路径" align="center" prop="idCardFrontImg" />
       <el-table-column label="身份证反面图片路径" align="center" prop="idCardBackImg" />
       <el-table-column label="用户头像路径" align="center" prop="avatar" />
-      <el-table-column label="收款方式(1:支付宝 2:微信 3:银行卡)" align="center" prop="paymentMethod" />
-      <el-table-column label="收款账号" align="center" prop="paymentAccount" />
+      <el-table-column label="默认收款方式(1:支付宝 2:微信 3:银行卡)" align="center" prop="paymentMethod" />
+      <el-table-column label="默认收款账号信息" align="center" prop="paymentAccount" />
+      <el-table-column label="绑定的收款方式(JSON格式）" align="center" prop="paymentMethodIds" />
       <el-table-column label="总收入" align="center" prop="totalIncome" />
       <el-table-column label="总支出" align="center" prop="totalExpense" />
       <el-table-column label="钱包余额" align="center" prop="walletBalance" />
@@ -275,11 +276,14 @@
         <el-form-item label="用户头像路径" prop="avatar">
           <el-input v-model="form.avatar" placeholder="请输入用户头像路径" />
         </el-form-item>
-        <el-form-item label="收款方式(1:支付宝 2:微信 3:银行卡)" prop="paymentMethod">
-          <el-input v-model="form.paymentMethod" placeholder="请输入收款方式(1:支付宝 2:微信 3:银行卡)" />
+        <el-form-item label="默认收款方式(1:支付宝 2:微信 3:银行卡)" prop="paymentMethod">
+          <el-input v-model="form.paymentMethod" placeholder="请输入默认收款方式(1:支付宝 2:微信 3:银行卡)" />
         </el-form-item>
-        <el-form-item label="收款账号" prop="paymentAccount">
-          <el-input v-model="form.paymentAccount" placeholder="请输入收款账号" />
+        <el-form-item label="默认收款账号信息" prop="paymentAccount">
+          <el-input v-model="form.paymentAccount" type="textarea" placeholder="请输入内容" />
+        </el-form-item>
+        <el-form-item label="绑定的收款方式(JSON格式）" prop="paymentMethodIds">
+          <el-input v-model="form.paymentMethodIds" placeholder="请输入绑定的收款方式(JSON格式）" />
         </el-form-item>
         <el-form-item label="总收入" prop="totalIncome">
           <el-input v-model="form.totalIncome" placeholder="请输入总收入" />
@@ -358,6 +362,7 @@ export default {
         avatar: null,
         paymentMethod: null,
         paymentAccount: null,
+        paymentMethodIds: null,
         totalIncome: null,
         totalExpense: null,
         walletBalance: null,
@@ -415,6 +420,7 @@ export default {
         avatar: null,
         paymentMethod: null,
         paymentAccount: null,
+        paymentMethodIds: null,
         totalIncome: null,
         totalExpense: null,
         walletBalance: null,

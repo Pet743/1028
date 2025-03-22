@@ -41,6 +41,27 @@ alipay:
   signType: "RSA2"
   notifyUrl: "http://119.3.173.120:8090/api/pay/alipaywapnotify"
 
+# 收钱吧支付配置
+shouqianba:
+  # API域名地址
+  api-domain: "https://vsi-api.shouqianba.com"
+  # 服务商序列号
+  vendor-sn: "91802478"
+  # 服务商密钥
+  vendor-key: "2694961f8d056ec3db9953ea16b23e58"
+  # 应用编号
+  app-id: "2025031900008758"
+  # 激活码
+  code: "27246586"
+  # 设备ID
+  device-id: "CNHM0001POS01"
+  # 客户终端编号
+  client-sn: "POS01"
+  # 终端名称
+  terminal-name: "1号款台"
+  # 操作员名称
+  operator: "system"
+
 
 # 日志配置
 logging:
