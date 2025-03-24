@@ -52,16 +52,17 @@ shouqianba:
   # 应用编号
   app-id: "2025031900008758"
   # 激活码
-  code: "27246586"
+  code: "57469461"
   # 设备ID
-  device-id: "CNHM0001POS01"
+  device-id: "ALSE7210001"
   # 客户终端编号
   client-sn: "POS01"
   # 终端名称
   terminal-name: "1号款台"
   # 操作员名称
   operator: "system"
-
+  # 其他配置...
+  wap-gateway: "https://qr.shouqianba.com/gateway"
 
 # 日志配置
 logging:

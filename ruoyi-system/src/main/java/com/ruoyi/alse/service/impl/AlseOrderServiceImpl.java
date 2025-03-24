@@ -135,7 +135,6 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         // 过滤只保留待付款和待发货的订单
         List<AlseOrder> filteredList = orderList.stream()
                 .filter(order ->
-                        PaymentMethodEnum.ALIPAY.getCode().equals(order.getPaymentMethod()) &&
                                 order.getOrderStatus() == OrderStatusEnum.PENDING_PAYMENT.getCode() ||
                                 order.getOrderStatus() == OrderStatusEnum.PENDING_SHIPMENT.getCode())
                 .collect(Collectors.toList());
@@ -155,7 +154,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      * @return 创建的订单对象
      */
     @Transactional(rollbackFor = Exception.class)
-    public AlseOrder createVirtualOrder(String outTradeNo, BigDecimal totalAmount) {
+    public AlseOrder createVirtualOrder(String outTradeNo, BigDecimal totalAmount, Integer payMethod) {
         log.info("开始创建虚拟订单，订单号：{}，支付金额：{}", outTradeNo, totalAmount);
 
         // 1. 创建订单对象
@@ -182,16 +181,16 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         order.setTotalAmount(totalAmount);
 
         // 6. 设置支付方式为支付宝
-        order.setPaymentMethod(PaymentMethodEnum.ALIPAY.getCode());
+        order.setPaymentMethod(payMethod);
 
         // 7. 设置随机买家和卖家信息
         order.setBuyerId(generateRandomUserId());
         order.setBuyerName("买家_" + order.getBuyerId());
-        order.setBuyerPhone("1888888" + (1000 + new java.util.Random().nextInt(9000)));
+        order.setBuyerPhone("188****" + (1000 + new java.util.Random().nextInt(9000)));
 
         order.setSellerId(generateRandomUserId());
         order.setSellerName("卖家_" + order.getSellerId());
-        order.setSellerPhone("1999999" + (1000 + new java.util.Random().nextInt(9000)));
+        order.setSellerPhone("199****" + (1000 + new java.util.Random().nextInt(9000)));
 
         // 8. 设置订单状态为已支付(待发货)
         order.setOrderStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());

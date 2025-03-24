@@ -14,6 +14,7 @@ import com.ruoyi.uni.config.AlipayProperties;
 import com.ruoyi.uni.converter.PaymentConverter;
 
 import com.ruoyi.uni.model.DTO.request.payment.PaymentRequestDTO;
+import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
 import com.ruoyi.uni.util.FinanceUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,7 +95,8 @@ public class ALiPaymentService {
         // 设置回调地址
         request.setReturnUrl(alipayProperties.getReturnUrl());
         request.setNotifyUrl(alipayProperties.getNotifyUrl());
-        orderService.createVirtualOrder(paymentModel.getOutTradeNo(), FinanceUtils.toBigDecimal(paymentModel.getTotalAmount()));
+        orderService.createVirtualOrder(paymentModel.getOutTradeNo(),
+                FinanceUtils.toBigDecimal(paymentModel.getTotalAmount()), PaymentMethodEnum.ALIPAY.getCode());
 
         // 构造业务参数JSON
         String bizContent = String.format(

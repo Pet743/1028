@@ -11,7 +11,8 @@ public enum PaymentMethodEnum {
     ALIPAY(1, "支付宝"),
     WECHAT(2, "微信"),
     BANK_CARD(3, "银行卡"),
-    WALLET(4, "钱包余额");
+    WALLET(4, "钱包余额"),
+    SHOUQIANBA(5,"收钱吧");
 
     private final int code;
     private final String desc;

@@ -2,7 +2,7 @@ package com.ruoyi.uni.task;
 
 import com.ruoyi.alse.domain.AlseOrder;
 import com.ruoyi.alse.service.IAlseOrderService;
-import com.ruoyi.uni.controller.UniPayController;
+import com.ruoyi.uni.controller.pay.UniPayController;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -61,10 +61,10 @@ public class OrderTimeoutTask {
     /**
      * 同步一次订单支付状态（支付宝）
      * */
-    public void syncAliPayOrderStatus() {
+    public void syncAliPayOrderStatus(String payMethod) {
         log.info("定时任务开始执行：同步订单支付状态");
         try {
-            uniPayController.syncOrderStatus();
+            uniPayController.syncOrderStatus(Integer.valueOf(payMethod));
         } catch (Exception e) {
             log.error("同步订单支付状态定时任务执行失败", e);
         }

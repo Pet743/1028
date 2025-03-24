@@ -56,4 +56,9 @@ public class ShouqianbaProperties {
      * 操作员名称
      */
     private String operator;
+
+    /**
+     * WAP支付网关地址
+     */
+    private String wapGateway = "https://qr.shouqianba.com/gateway";
 }

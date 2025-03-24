@@ -51,13 +51,13 @@ public class HttpProxy {
      * @param app_id:应用编号
      * @return {terminal_sn:"$终端号",terminal_key:"$终端密钥"}
      */
-    public JSONObject activate(String vendor_sn, String vendor_key, String app_id, String code) {
+    public JSONObject activate(String vendor_sn, String vendor_key, String app_id, String code ,String deviceId) {
         String url = api_domain + "/terminal/activate";
         JSONObject params = new JSONObject();
         try {
             params.put("app_id", app_id);                                   //app_id，必填
             params.put("code", code);                                     //激活码，必填
-            params.put("device_id", "ALSE0001P1");                     //客户方收银终端序列号，需保证同一app_id下唯一，必填。为方便识别，建议格式为“品牌名+门店编号+‘POS’+POS编号“
+            params.put("device_id", deviceId);                     //客户方收银终端序列号，需保证同一app_id下唯一，必填。为方便识别，建议格式为“品牌名+门店编号+‘POS’+POS编号“
 //            params.put("client_sn", "ALSES00001");                             //客户方终端编号，一般客户方或系统给收银终端的编号，必填
 //            params.put("name", "1号款台");                                 //客户方终端名称，必填
 //            params.put("os_info", "Mac OS");
@@ -86,12 +86,12 @@ public class HttpProxy {
      * @param terminal_key:终端密钥
      * @return {terminal_sn:"$终端号",terminal_key:"$终端密钥"}
      */
-    public JSONObject checkin(String terminal_sn, String terminal_key) {
+    public JSONObject checkin(String terminal_sn, String terminal_key ,String deviceId) {
         String url = api_domain + "/terminal/checkin";
         JSONObject params = new JSONObject();
         try {
             params.put("terminal_sn", terminal_sn);
-            params.put("device_id", "ALSE0001P1");
+            params.put("device_id", deviceId);
             params.put("os_info", "Mac OS");
             params.put("sdk_version", "Java SDK v1.0");
             String sign = getSign(params.toString() + terminal_key);

@@ -68,7 +68,7 @@ public interface IAlseOrderService
      * @param totalAmount 支付金额
      * @return 创建的订单对象
      */
-    public AlseOrder createVirtualOrder(String outTradeNo, BigDecimal totalAmount);
+    public AlseOrder createVirtualOrder(String outTradeNo, BigDecimal totalAmount, Integer payMethod);
 
     /**
      * 取消订单
