@@ -17,7 +17,7 @@ import com.ruoyi.uni.model.DTO.request.order.PayOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.request.order.ShipOrderRequestDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
-import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultOrderDTO;
 import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
 import com.ruoyi.uni.service.PaymentProcessor;
@@ -555,7 +555,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public PaymentResultDTO createOrder(CreateOrderRequestDTO requestDTO, Long userId) {
+    public PaymentResultOrderDTO createOrder(CreateOrderRequestDTO requestDTO, Long userId) {
         log.info("开始创建订单，用户ID：{}，请求参数：{}", userId, requestDTO);
 
         // 1. 异步获取必要信息
@@ -679,7 +679,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
             try {
                 // 10. 获取对应的支付处理器并处理支付
                 PaymentProcessor paymentProcessor = paymentProcessorFactory.getProcessor(requestDTO.getPaymentMethod());
-                PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
+                PaymentResultOrderDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
 
                 // 11. 如果是钱包支付或其他直接完成的支付方式，订单状态会在处理器中更新，需要再次保存
                 if (paymentResult.getPaymentStatus() == OrderStatusEnum.PENDING_SHIPMENT.getCode()) { // 已支付
@@ -927,7 +927,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
      * 重新发起支付
      */
     @Override
-    public PaymentResultDTO repayOrder(Long orderId, Long userId) {
+    public PaymentResultOrderDTO repayOrder(Long orderId, Long userId) {
         // 查询订单
         AlseOrder order = alseOrderMapper.selectAlseOrderByOrderId(orderId);
 
@@ -949,7 +949,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         // 如果是支付宝支付且已有支付链接
         if (PaymentMethodEnum.ALIPAY.getCode().equals(order.getPaymentMethod())
                 && StringUtils.isNotEmpty(order.getReceivingAccount())) {
-            PaymentResultDTO result = new PaymentResultDTO();
+            PaymentResultOrderDTO result = new PaymentResultOrderDTO();
             result.setOrderId(order.getOrderId());
             result.setOrderNo(order.getOrderNo());
             result.setPaymentStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
@@ -963,7 +963,7 @@ public class AlseOrderServiceImpl implements IAlseOrderService {
         AlseProduct product = alseProductService.selectAlseProductByProductId(order.getProductId());
 
         PaymentProcessor paymentProcessor = paymentProcessorFactory.getProcessor(order.getPaymentMethod());
-        PaymentResultDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
+        PaymentResultOrderDTO paymentResult = paymentProcessor.processPayment(order, product, buyer);
 
         // 更新订单中的支付链接
         if (PaymentMethodEnum.ALIPAY.getCode().equals(paymentResult.getPaymentMethod())) {

@@ -3,22 +3,17 @@ package com.ruoyi.uni.controller;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.ruoyi.alse.domain.AlseOrder;
-import com.ruoyi.alse.domain.AlseProduct;
-import com.ruoyi.alse.domain.AlseUser;
 import com.ruoyi.alse.service.IAlseOrderService;
 import com.ruoyi.common.annotation.CheckToken;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
-import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.converter.OrderConverter;
 import com.ruoyi.uni.model.DTO.request.order.*;
 import com.ruoyi.uni.model.DTO.respone.order.OrderDetailResponseDTO;
 import com.ruoyi.uni.model.DTO.respone.order.OrderResponseDTO;
-import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
-import com.ruoyi.uni.model.Enum.OrderStatusEnum;
-import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultOrderDTO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +49,7 @@ public class UniOrderController {
             }
 
             // 创建订单并处理支付
-            PaymentResultDTO paymentResult = alseOrderService.createOrder(requestDTO, requestDTO.getUserId());
+            PaymentResultOrderDTO paymentResult = alseOrderService.createOrder(requestDTO, requestDTO.getUserId());
 
             // 根据支付状态返回不同的消息
             if (paymentResult.getPaymentStatus() == 2) { // 已支付成功
@@ -338,7 +333,7 @@ public class UniOrderController {
                 return AjaxResult.error("用户ID和订单ID不能为空");
             }
 
-            PaymentResultDTO paymentResult = alseOrderService.repayOrder(requestDTO.getOrderId(), requestDTO.getUserId());
+            PaymentResultOrderDTO paymentResult = alseOrderService.repayOrder(requestDTO.getOrderId(), requestDTO.getUserId());
 
             return AjaxResult.success("重新获取支付链接成功", paymentResult);
 

@@ -3,7 +3,7 @@ package com.ruoyi.uni.service;
 import com.ruoyi.alse.domain.AlseOrder;
 import com.ruoyi.alse.domain.AlseProduct;
 import com.ruoyi.alse.domain.AlseUser;
-import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultOrderDTO;
 
 import java.util.Map;
 
@@ -24,7 +24,7 @@ public interface PaymentProcessor {
      * @param buyer 买家信息
      * @return 支付结果
      */
-    PaymentResultDTO processPayment(AlseOrder order, AlseProduct product, AlseUser buyer);
+    PaymentResultOrderDTO processPayment(AlseOrder order, AlseProduct product, AlseUser buyer);
 
     /**
      * 处理支付回调

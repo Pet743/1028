@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.alse.mapper.AlsePayChannelConfigMapper">
+    
+    <resultMap type="AlsePayChannelConfig" id="AlsePayChannelConfigResult">
+        <result property="id"    column="id"    />
+        <result property="channelCode"    column="channel_code"    />
+        <result property="channelName"    column="channel_name"    />
+        <result property="merchantId"    column="merchant_id"    />
+        <result property="merchantName"    column="merchant_name"    />
+        <result property="weight"    column="weight"    />
+        <result property="timeout"    column="timeout"    />
+        <result property="concurrentLimit"    column="concurrent_limit"    />
+        <result property="enabled"    column="enabled"    />
+        <result property="channelParams"    column="channel_params"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectAlsePayChannelConfigVo">
+        select id, channel_code, channel_name, merchant_id, merchant_name, weight, timeout, concurrent_limit, enabled, channel_params, status, create_by, create_time, update_by, update_time, remark from alse_pay_channel_config
+    </sql>
+
+    <select id="selectAlsePayChannelConfigList" parameterType="AlsePayChannelConfig" resultMap="AlsePayChannelConfigResult">
+        <include refid="selectAlsePayChannelConfigVo"/>
+        <where>  
+            <if test="channelCode != null  and channelCode != ''"> and channel_code = #{channelCode}</if>
+            <if test="channelName != null  and channelName != ''"> and channel_name like concat('%', #{channelName}, '%')</if>
+            <if test="merchantId != null  and merchantId != ''"> and merchant_id = #{merchantId}</if>
+            <if test="merchantName != null  and merchantName != ''"> and merchant_name like concat('%', #{merchantName}, '%')</if>
+            <if test="weight != null "> and weight = #{weight}</if>
+            <if test="timeout != null "> and timeout = #{timeout}</if>
+            <if test="concurrentLimit != null "> and concurrent_limit = #{concurrentLimit}</if>
+            <if test="enabled != null "> and enabled = #{enabled}</if>
+            <if test="channelParams != null  and channelParams != ''"> and channel_params = #{channelParams}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectAlsePayChannelConfigById" parameterType="Long" resultMap="AlsePayChannelConfigResult">
+        <include refid="selectAlsePayChannelConfigVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertAlsePayChannelConfig" parameterType="AlsePayChannelConfig" useGeneratedKeys="true" keyProperty="id">
+        insert into alse_pay_channel_config
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="channelCode != null and channelCode != ''">channel_code,</if>
+            <if test="channelName != null and channelName != ''">channel_name,</if>
+            <if test="merchantId != null and merchantId != ''">merchant_id,</if>
+            <if test="merchantName != null and merchantName != ''">merchant_name,</if>
+            <if test="weight != null">weight,</if>
+            <if test="timeout != null">timeout,</if>
+            <if test="concurrentLimit != null">concurrent_limit,</if>
+            <if test="enabled != null">enabled,</if>
+            <if test="channelParams != null">channel_params,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="channelCode != null and channelCode != ''">#{channelCode},</if>
+            <if test="channelName != null and channelName != ''">#{channelName},</if>
+            <if test="merchantId != null and merchantId != ''">#{merchantId},</if>
+            <if test="merchantName != null and merchantName != ''">#{merchantName},</if>
+            <if test="weight != null">#{weight},</if>
+            <if test="timeout != null">#{timeout},</if>
+            <if test="concurrentLimit != null">#{concurrentLimit},</if>
+            <if test="enabled != null">#{enabled},</if>
+            <if test="channelParams != null">#{channelParams},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAlsePayChannelConfig" parameterType="AlsePayChannelConfig">
+        update alse_pay_channel_config
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="channelCode != null and channelCode != ''">channel_code = #{channelCode},</if>
+            <if test="channelName != null and channelName != ''">channel_name = #{channelName},</if>
+            <if test="merchantId != null and merchantId != ''">merchant_id = #{merchantId},</if>
+            <if test="merchantName != null and merchantName != ''">merchant_name = #{merchantName},</if>
+            <if test="weight != null">weight = #{weight},</if>
+            <if test="timeout != null">timeout = #{timeout},</if>
+            <if test="concurrentLimit != null">concurrent_limit = #{concurrentLimit},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="channelParams != null">channel_params = #{channelParams},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAlsePayChannelConfigById" parameterType="Long">
+        delete from alse_pay_channel_config where id = #{id}
+    </delete>
+
+    <delete id="deleteAlsePayChannelConfigByIds" parameterType="String">
+        delete from alse_pay_channel_config where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

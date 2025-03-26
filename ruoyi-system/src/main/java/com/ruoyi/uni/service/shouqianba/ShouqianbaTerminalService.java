@@ -1,6 +1,5 @@
 package com.ruoyi.uni.service.shouqianba;
 
-import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

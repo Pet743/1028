@@ -83,6 +83,12 @@
             <version>${json-version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.huifu.bspay.sdk</groupId>
+            <artifactId>dg-java-sdk</artifactId>
+            <version>${dg-java-sdk-version}</version>
+        </dependency>
+
     </dependencies>
 
 </project>

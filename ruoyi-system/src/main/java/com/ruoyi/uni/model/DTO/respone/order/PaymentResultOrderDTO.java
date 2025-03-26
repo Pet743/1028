@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Data
 @ApiModel("通用支付结果响应")
-public class PaymentResultDTO {
+public class PaymentResultOrderDTO {
 
     @ApiModelProperty(value = "订单ID")
     private Long orderId;

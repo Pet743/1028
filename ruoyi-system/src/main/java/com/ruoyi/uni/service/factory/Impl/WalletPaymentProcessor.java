@@ -8,7 +8,7 @@ import com.ruoyi.alse.service.IAlseUserService;
 import com.ruoyi.alse.service.IAlseWalletTransactionService;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
-import com.ruoyi.uni.model.DTO.respone.order.PaymentResultDTO;
+import com.ruoyi.uni.model.DTO.respone.order.PaymentResultOrderDTO;
 import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
 import com.ruoyi.uni.service.PaymentProcessor;
@@ -36,7 +36,7 @@ public class WalletPaymentProcessor implements PaymentProcessor {
     }
 
     @Override
-    public PaymentResultDTO processPayment(AlseOrder order, AlseProduct product, AlseUser buyer) {
+    public PaymentResultOrderDTO processPayment(AlseOrder order, AlseProduct product, AlseUser buyer) {
         log.info("处理钱包支付，订单号: {}", order.getOrderNo());
 
         // 检查余额是否充足
@@ -81,7 +81,7 @@ public class WalletPaymentProcessor implements PaymentProcessor {
         }
 
         // 构建支付结果
-        PaymentResultDTO resultDTO = new PaymentResultDTO();
+        PaymentResultOrderDTO resultDTO = new PaymentResultOrderDTO();
         resultDTO.setOrderId(order.getOrderId());
         resultDTO.setOrderNo(order.getOrderNo());
         resultDTO.setPaymentMethod(PaymentMethodEnum.WALLET.getCode());

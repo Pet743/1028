@@ -42,6 +42,8 @@
         <alipay-sdk-java-version>4.40.82.ALL</alipay-sdk-java-version>
         <commons-httpclient-version>3.1</commons-httpclient-version>
         <json-version>20231013</json-version>
+        <dg-java-sdk-version>3.0.21</dg-java-sdk-version>
+
     </properties>
 
     <!-- 依赖声明 -->
@@ -265,6 +267,12 @@
                 <groupId>org.json</groupId>
                 <artifactId>json</artifactId>
                 <version>${json-version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.huifu.bspay.sdk</groupId>
+                <artifactId>dg-java-sdk</artifactId>
+                <version>${dg-java-sdk-version}</version>
             </dependency>
 
 
