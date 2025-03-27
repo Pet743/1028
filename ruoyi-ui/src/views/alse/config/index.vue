@@ -1,10 +1,11 @@
 <template>
   <div class="app-container">
+    <!-- 搜索和列表部分保持不变 -->
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="支付通道代码(zfb/vx/sqb)" prop="channelCode">
+      <el-form-item label="支付通道(zfb/vx/sqb)" prop="channelCode">
         <el-input
           v-model="queryParams.channelCode"
-          placeholder="请输入支付通道代码(zfb/vx/sqb)"
+          placeholder="请输入支付通道(zfb/vx/sqb)"
           clearable
           @keyup.enter.native="handleQuery"
         />
@@ -120,7 +121,7 @@
     <el-table v-loading="loading" :data="configList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="配置ID" align="center" prop="id" />
-      <el-table-column label="支付通道代码(zfb/vx/sqb)" align="center" prop="channelCode" />
+      <el-table-column label="支付通道" align="center" prop="channelCode" />
       <el-table-column label="支付通道名称" align="center" prop="channelName" />
       <el-table-column label="商户号" align="center" prop="merchantId" />
       <el-table-column label="商户名称" align="center" prop="merchantName" />
@@ -128,7 +129,7 @@
       <el-table-column label="支付超时时间(秒)" align="center" prop="timeout" />
       <el-table-column label="最大并发待支付订单数" align="center" prop="concurrentLimit" />
       <el-table-column label="是否启用(0-禁用 1-启用)" align="center" prop="enabled" />
-      <el-table-column label="通道参数配置(JSON格式)" align="center" prop="channelParams" />
+
       <el-table-column label="状态(0-正常 1-停用)" align="center" prop="status" />
       <el-table-column label="备注" align="center" prop="remark" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
@@ -150,7 +151,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <pagination
       v-show="total>0"
       :total="total"
@@ -159,14 +160,28 @@
       @pagination="getList"
     />
 
-    <!-- 添加或修改支付通道配置对话框 -->
-    <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
-      <el-form ref="form" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="支付通道代码(zfb/vx/sqb)" prop="channelCode">
-          <el-input v-model="form.channelCode" placeholder="请输入支付通道代码(zfb/vx/sqb)" />
+    <!-- 优化后的添加或修改支付通道配置对话框 -->
+    <el-dialog :title="title" :visible.sync="open" width="650px" append-to-body>
+      <el-form ref="form" :model="form" :rules="rules" label-width="120px">
+        <el-form-item label="支付通道" prop="channelCode">
+          <el-select v-model="form.channelCode" placeholder="请选择支付通道" style="width: 100%" @change="handleChannelCodeChange">
+            <el-option
+              v-for="item in channelOptions"
+              :key="item.code"
+              :label="item.code"
+              :value="item.code">
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="支付通道名称" prop="channelName">
-          <el-input v-model="form.channelName" placeholder="请输入支付通道名称" />
+          <el-select v-model="form.channelName" placeholder="请选择支付通道名称" style="width: 100%" @change="handleChannelNameChange">
+            <el-option
+              v-for="item in channelOptions"
+              :key="item.name"
+              :label="item.name"
+              :value="item.name">
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="商户号" prop="merchantId">
           <el-input v-model="form.merchantId" placeholder="请输入商户号" />
@@ -174,21 +189,59 @@
         <el-form-item label="商户名称" prop="merchantName">
           <el-input v-model="form.merchantName" placeholder="请输入商户名称" />
         </el-form-item>
-        <el-form-item label="通道权重" prop="weight">
-          <el-input v-model="form.weight" placeholder="请输入通道权重" />
+
+        <el-row>
+          <el-col :span="8">
+            <el-form-item label="通道权重" prop="weight" label-width="80px">
+              <el-input-number v-model="form.weight" :min="1" :max="100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="超时(秒)" prop="timeout" label-width="80px">
+              <el-input-number v-model="form.timeout" :min="60" :max="3600" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="并发限制" prop="concurrentLimit" label-width="80px">
+              <el-input-number v-model="form.concurrentLimit" :min="1" :max="100" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="是否启用" prop="enabled">
+              <el-radio-group v-model="form.enabled">
+                <el-radio :label="1">启用</el-radio>
+                <el-radio :label="0">禁用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio label="0">正常</el-radio>
+                <el-radio label="1">停用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="通道参数配置" prop="channelParams">
+          <div class="json-editor-container">
+            <div class="json-editor-buttons">
+              <el-button size="mini" type="text" icon="el-icon-magic-stick" @click="formatJsonParams">格式化JSON</el-button>
+            </div>
+            <el-input
+              v-model="form.channelParams"
+              type="textarea"
+              :rows="12"
+              class="json-textarea"
+              placeholder="请输入JSON格式的通道参数配置"
+            />
+          </div>
         </el-form-item>
-        <el-form-item label="支付超时时间(秒)" prop="timeout">
-          <el-input v-model="form.timeout" placeholder="请输入支付超时时间(秒)" />
-        </el-form-item>
-        <el-form-item label="最大并发待支付订单数" prop="concurrentLimit">
-          <el-input v-model="form.concurrentLimit" placeholder="请输入最大并发待支付订单数" />
-        </el-form-item>
-        <el-form-item label="是否启用(0-禁用 1-启用)" prop="enabled">
-          <el-input v-model="form.enabled" placeholder="请输入是否启用(0-禁用 1-启用)" />
-        </el-form-item>
-        <el-form-item label="通道参数配置(JSON格式)" prop="channelParams">
-          <el-input v-model="form.channelParams" type="textarea" placeholder="请输入内容" />
-        </el-form-item>
+
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
         </el-form-item>
@@ -241,12 +294,10 @@ export default {
         channelParams: null,
         status: null,
       },
-      // 表单参数
       form: {},
-      // 表单校验
       rules: {
         channelCode: [
-          { required: true, message: "支付通道代码(zfb/vx/sqb)不能为空", trigger: "blur" }
+          { required: true, message: "支付通道不能为空", trigger: "change" }
         ],
         channelName: [
           { required: true, message: "支付通道名称不能为空", trigger: "blur" }
@@ -261,15 +312,28 @@ export default {
           { required: true, message: "通道权重不能为空", trigger: "blur" }
         ],
         timeout: [
-          { required: true, message: "支付超时时间(秒)不能为空", trigger: "blur" }
+          { required: true, message: "支付超时时间不能为空", trigger: "blur" }
         ],
         concurrentLimit: [
           { required: true, message: "最大并发待支付订单数不能为空", trigger: "blur" }
         ],
         enabled: [
-          { required: true, message: "是否启用(0-禁用 1-启用)不能为空", trigger: "blur" }
+          { required: true, message: "是否启用不能为空", trigger: "change" }
         ],
-      }
+      },
+      // 新增JSON编辑器相关属性
+      jsonEditorVisible: false,
+      jsonEditorValue: '',
+      // 支付通道选项
+      channelOptions: [
+        { code: "zfb", name: "支付宝", system: 1, value: "1" },
+        { code: "vx", name: "微信支付", system: 2, value: "3" },
+        { code: "yinghang", name: "银行卡", system: 3, value: "" },
+        { code: "qianbao", name: "钱包余额", system: 4, value: "" },
+        { code: "zfb", name: "收钱吧", system: 5, value: "18" },
+        { code: "zfb", name: "汇付支付宝", system: 6, value: "" },
+        { code: "vx", name: "汇付微信", system: 7, value: "" }
+      ]
     };
   },
   created() {
@@ -298,12 +362,12 @@ export default {
         channelName: null,
         merchantId: null,
         merchantName: null,
-        weight: null,
-        timeout: null,
-        concurrentLimit: null,
-        enabled: null,
+        weight: 10,
+        timeout: 600,
+        concurrentLimit: 10,
+        enabled: 1,
         channelParams: null,
-        status: null,
+        status: "0",
         createBy: null,
         createTime: null,
         updateBy: null,
@@ -340,6 +404,15 @@ export default {
       const id = row.id || this.ids
       getConfig(id).then(response => {
         this.form = response.data;
+        // 格式化JSON以提高可读性
+        if (this.form.channelParams) {
+          try {
+            const jsonObj = JSON.parse(this.form.channelParams);
+            this.form.channelParams = JSON.stringify(jsonObj, null, 2);
+          } catch (e) {
+            // 如果JSON格式不正确，保留原样
+          }
+        }
         this.open = true;
         this.title = "修改支付通道配置";
       });
@@ -348,6 +421,16 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          // 验证JSON格式
+          if (this.form.channelParams) {
+            try {
+              JSON.parse(this.form.channelParams);
+            } catch (e) {
+              this.$message.error("通道参数配置JSON格式不正确，请检查");
+              return;
+            }
+          }
+
           if (this.form.id != null) {
             updateConfig(this.form).then(response => {
               this.$modal.msgSuccess("修改成功");
@@ -379,7 +462,78 @@ export default {
       this.download('alse/config/export', {
         ...this.queryParams
       }, `config_${new Date().getTime()}.xlsx`)
+    },
+
+    /** 格式化JSON参数 */
+    formatJsonParams() {
+      if (!this.form.channelParams) {
+        return;
+      }
+
+      try {
+        const jsonObj = JSON.parse(this.form.channelParams);
+        this.form.channelParams = JSON.stringify(jsonObj, null, 2);
+        this.$message.success("JSON格式化成功");
+      } catch (e) {
+        this.$message.error("JSON格式错误，无法格式化: " + e.message);
+      }
+    },
+
+    /** 通道代码变更处理 */
+    handleChannelCodeChange(code) {
+      // 当选择了通道代码时，找到该代码对应的所有可能名称
+      const matchingItems = this.channelOptions.filter(item => item.code === code);
+
+      // 如果只有一个匹配项，则自动设置通道名称
+      if (matchingItems.length === 1) {
+        this.form.channelName = matchingItems[0].name;
+      }
+        // 如果有多个匹配项（如多个zfb），则保持当前名称不变
+      // 或者如果当前名称为空，设置为第一个匹配项的名称
+      else if (matchingItems.length > 1 && !this.form.channelName) {
+        this.form.channelName = matchingItems[0].name;
+      }
+    },
+
+    /** 通道名称变更处理 */
+    handleChannelNameChange(name) {
+      // 通过名称查找对应的通道代码
+      const item = this.channelOptions.find(item => item.name === name);
+      if (item) {
+        this.form.channelCode = item.code;
+      }
     }
+
   }
 };
 </script>
+
+<style scoped>
+.json-editor-container {
+  position: relative;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+}
+
+.json-editor-buttons {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 1;
+}
+
+.json-textarea {
+  font-family: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+  font-size: 13px;
+}
+
+/* 覆盖el-input textarea样式 */
+.json-textarea >>> .el-textarea__inner {
+  padding-top: 32px;
+  padding-left: 12px;
+  padding-right: 12px;
+  font-family: "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+</style>
