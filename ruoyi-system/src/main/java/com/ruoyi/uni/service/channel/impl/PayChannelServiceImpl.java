@@ -123,8 +123,11 @@ public class PayChannelServiceImpl implements PayChannelService {
         // 设置超时任务
         scheduleTimeout(orderNo, selectedChannel);
 
-        // 根据支付方式加载配置
-        if (PayChannelEnum.ALIPAY.getCode().equals(channelCode)) {
+        // 根据通道加载配置
+        if (PayChannelEnum.ALIPAY.getName().equals(selectedChannel.getChannelName())) {
+            alipayConfigLoader.mergeGlobalConfig(selectedChannel);
+        }
+        if (PayChannelEnum.HUIFU_MINIAPP.getName().equals(selectedChannel.getChannelName())) {
             alipayConfigLoader.mergeGlobalConfig(selectedChannel);
         }
         // 其他支付方式的配置加载

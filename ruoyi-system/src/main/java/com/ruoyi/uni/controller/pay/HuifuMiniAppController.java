@@ -85,8 +85,6 @@ public class HuifuMiniAppController {
             paramsInfo.put("goods_desc", orderNo);
             // 微信小程序扩展参数集合
             paramsInfo.put("miniapp_data", "{\"seq_id\":\"\",\"private_info\":\"oppsHosting://\",\"\":\"Y\"}");
-            // 是否延迟交易
-            paramsInfo.put("delay_acct_flag", "Y");
             // 分账对象
 //            paramsInfo.put("acct_split_bunch", "{\"acct_infos\":[{\"div_amt\":\"0.01\",\"huifu_id\":\"6666000109133323\"}]}");
             // 交易异步通知地址

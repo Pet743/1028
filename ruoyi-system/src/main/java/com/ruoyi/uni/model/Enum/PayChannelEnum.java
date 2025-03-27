@@ -12,8 +12,9 @@ public enum PayChannelEnum {
     WECHAT("vx", "3", 2, "微信支付"),
     BANK_CARD("yinghang","",3, "银行卡"),
     WALLET("qianbao","",4, "钱包余额"),
-    SHOUQIANBA("sqb", "18", 5, "收钱吧"),
-    HUIFU_MINIAPP("hf","", 6, "汇付微信小程序支付");
+    SHOUQIANBA("zfb", "18", 5, "收钱吧"),
+    HUIFU_MINIAPP("zfb","", 6, "汇付支付宝"),
+    HUIFU_ALIPAY("vx","", 7, "汇付微信");
 
 
     /**
