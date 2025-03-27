@@ -9,6 +9,14 @@ public class ApiConstants {
      * API基础URL
      */
     public static final String BASE_API_URL = "http://www.1w1w1.com/api";
+
+
+    /**
+     * API基础URL
+     */
+    public static final String HTTP_API_URL = "http://119.3.173.120:8181";
+
+
     /**
      * API基础URL
      */

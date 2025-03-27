@@ -2,9 +2,11 @@ package com.ruoyi.uni.controller.pay;
 
 import com.ruoyi.alse.service.IAlseOrderService;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.uni.config.ShouqianbaProperties;
 import com.ruoyi.uni.model.DTO.request.payment.WapPayRequestDTO;
 import com.ruoyi.uni.model.Enum.PaymentMethodEnum;
+import com.ruoyi.uni.model.Enum.ShouqianbaPaywayEnum;
 import com.ruoyi.uni.model.constants.ApiConstants;
 import com.ruoyi.uni.service.shouqianba.ShouqianbaService;
 import com.ruoyi.uni.util.FinanceUtils;
@@ -48,9 +50,107 @@ public class ShouqianbaWapController {
 
 
     /**
-     * 创建WAP支付并跳转到收钱吧支付页面
+     * 直接调用支付接口并跳转
      */
     @GetMapping("/pay")
+    @ApiOperation("支付并跳转")
+    public RedirectView createPayPaymentWithRedirect(@Valid WapPayRequestDTO request) {
+        try {
+            // 校验参数
+            if (StringUtils.isEmpty(request.getTotalAmount())) {
+                return new RedirectView("/error?message=支付金额不能为空");
+            }
+
+            // 解析金额：从元转为分
+            BigDecimal amountInYuan;
+            try {
+                amountInYuan = FinanceUtils.toBigDecimal(request.getTotalAmount());
+
+                // 校验金额合法性
+                if (amountInYuan.compareTo(BigDecimal.ZERO) <= 0) {
+                    return new RedirectView("/error?message=金额必须大于0");
+                }
+            } catch (Exception e) {
+                log.error("金额格式转换失败", e);
+                return new RedirectView("/error?message=金额格式无效: " + request.getTotalAmount());
+            }
+
+            // 转换为分
+            long amountInCents = amountInYuan
+                    .multiply(FinanceUtils.HUNDRED)
+                    .longValue();
+
+            // 获取支付方式
+            String payway = ShouqianbaPaywayEnum.getValueByCode(request.getFangshi());
+
+            // 生成订单号
+            String orderSn = OrderSnGenerator.generateClientSn("S");
+
+            // 创建订单记录
+            try {
+                alseOrderService.createVirtualOrder(orderSn, amountInYuan, PaymentMethodEnum.SHOUQIANBA.getCode());
+            } catch (Exception e) {
+                log.error("创建订单记录失败", e);
+                return new RedirectView("/error?message=创建订单失败: " + e.getMessage());
+            }
+
+            // 调用支付接口
+            String result = shouqianbaService.precreate(
+                    String.valueOf(amountInCents),
+                    payway,
+                    orderSn
+            );
+
+            if (StringUtils.isEmpty(result)) {
+                return new RedirectView("/error?message=支付接口调用失败");
+            }
+
+            // 解析预下单结果
+            try {
+                com.alibaba.fastjson2.JSONObject response = com.alibaba.fastjson2.JSONObject.parseObject(result);
+
+                // 返回预下单结果
+                if ("200".equals(response.getString("result_code"))) {
+                    com.alibaba.fastjson2.JSONObject bizResponse = response.getJSONObject("biz_response");
+
+                    if (bizResponse != null && "PRECREATE_SUCCESS".equals(bizResponse.getString("result_code"))) {
+                        // 预下单成功
+                        com.alibaba.fastjson2.JSONObject data = bizResponse.getJSONObject("data");
+                        if (data != null) {
+                            String qrCode = data.getString("qr_code");
+
+                            if (StringUtils.isNotEmpty(qrCode)) {
+                                // 直接重定向到支付链接
+                                return new RedirectView(qrCode);
+                            } else {
+                                return new RedirectView("/error?message=没有获取到支付链接");
+                            }
+                        }
+                    } else {
+                        String errorMsg = bizResponse != null ? bizResponse.getString("error_message") : "预下单失败";
+                        return new RedirectView("/error?message=" + URLEncoder.encode(errorMsg, "UTF-8"));
+                    }
+                } else {
+                    return new RedirectView("/error?message=" +
+                            URLEncoder.encode(response.getString("error_message"), "UTF-8"));
+                }
+            } catch (Exception e) {
+                log.error("解析预下单结果异常", e);
+                return new RedirectView("/error?message=预下单处理异常: " + e.getMessage());
+            }
+
+            return new RedirectView("/error?message=预下单处理失败");
+        } catch (Exception e) {
+            log.error("预下单异常", e);
+            return new RedirectView("/error?message=预下单处理异常: " + e.getMessage());
+        }
+    }
+
+
+    /**
+     * 创建WAP支付并跳转到收钱吧支付页面
+     */
+    @GetMapping("/wap-payment")
     @ApiOperation("WAP跳转支付")
     public RedirectView createWapPayment(@Valid WapPayRequestDTO request) {
         try {
@@ -90,6 +190,9 @@ public class ShouqianbaWapController {
 
 
             params.put("subject", orderSn);
+            // 设置支付方式 - 根据传入的fangshi参数确定payway值
+            String payway = ShouqianbaPaywayEnum.getValueByCode(request.getFangshi());
+            params.put("payway", payway);
             params.put("operator", Constants.SUPER_ADMIN);
             params.put("notify_url", ApiConstants.BASE_API_URL + "/api/pay/shouqianba/wap/notify");
             params.put("return_url", ApiConstants.API_URL);

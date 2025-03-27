@@ -265,4 +265,27 @@ public class RedisCache
     {
         return redisTemplate.keys(pattern);
     }
+
+
+    /**
+     * 递增
+     * @param key 键
+     * @param delta 要增加几
+     * @return 递增后的值
+     */
+    public Long increment(final String key, final long delta)
+    {
+        return redisTemplate.opsForValue().increment(key, delta);
+    }
+
+    /**
+     * 递减
+     * @param key 键
+     * @param delta 要减少几
+     * @return 递减后的值
+     */
+    public Long decrement(final String key, final long delta)
+    {
+        return redisTemplate.opsForValue().increment(key, -delta);
+    }
 }

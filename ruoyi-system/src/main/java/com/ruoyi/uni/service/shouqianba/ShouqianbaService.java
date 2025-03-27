@@ -177,7 +177,7 @@ public class ShouqianbaService {
             params.put("client_sn", httpProxy.getClient_Sn(16));
             params.put("total_amount", totalAmount);
             params.put("payway", payway);
-            params.put("dynamic_id", dynamicId);
+//            params.put("dynamic_id", dynamicId);
             params.put("subject", subject);
             params.put("operator", properties.getOperator());
 
@@ -293,10 +293,9 @@ public class ShouqianbaService {
      * @param totalAmount 支付金额（分）
      * @param payway 支付方式 1:支付宝 3:微信 4:百付宝 5:京东钱包
      * @param subject 交易简介
-     * @param subPayway 二级支付方式
      * @return 预下单结果
      */
-    public String precreate(String totalAmount, String payway, String subject, String subPayway) {
+    public String precreate(String totalAmount, String payway, String subject) {
         // 确保有终端信息
         if (!ensureTerminalInfo()) {
             log.error("终端未激活或未签到，无法预下单");
@@ -311,8 +310,7 @@ public class ShouqianbaService {
             params.put("payway", payway);
             params.put("subject", subject);
             params.put("operator", properties.getOperator());
-            params.put("sub_payway", subPayway);
-
+//            params.put("sub_payway", subPayway);
             String sign = httpProxy.getSign(params.toString() + terminalKey);
             String result = HttpUtil.httpPost(properties.getApiDomain() + "/upay/v2/precreate",
                     params.toString(), sign, terminalSn);

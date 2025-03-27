@@ -2,7 +2,6 @@ package com.ruoyi.uni.service.channel.factory;
 
 import com.ruoyi.uni.config.PayChannelConfig;
 import com.ruoyi.alse.domain.PaymentResultDTO;
-
 import com.ruoyi.uni.model.Enum.PayChannelEnum;
 
 import java.math.BigDecimal;
@@ -22,7 +21,7 @@ public interface PayProcessor {
      * @param channelConfig 通道配置
      * @return 支付结果
      */
-    PaymentResultDTO processPayment(BigDecimal amount, String orderNo, PayChannelConfig channelConfig);
+    PaymentResultDTO processPayment(BigDecimal amount, String orderNo, PayChannelConfig channelConfig, String remark);
 
     /**
      * 处理支付回调

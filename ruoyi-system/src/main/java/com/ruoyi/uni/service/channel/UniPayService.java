@@ -13,7 +13,7 @@ public interface UniPayService {
      * @param channelCode 支付通道代码
      * @return 支付结果
      */
-    PaymentResultDTO createPayment(BigDecimal amount, String channelCode);
+    PaymentResultDTO createPayment(BigDecimal amount, String channelCode, String remark);
 
     /**
      * 处理支付回调

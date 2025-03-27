@@ -44,7 +44,7 @@ public class UniPayServiceImpl implements UniPayService {
     }
 
     @Override
-    public PaymentResultDTO createPayment(BigDecimal amount, String channelCode) {
+    public PaymentResultDTO createPayment(BigDecimal amount, String channelCode, String remark) {
         // 1. 验证支付方式
         PayChannelEnum channelEnum = PayChannelEnum.getByCode(channelCode);
         if (channelEnum == null) {
@@ -78,7 +78,7 @@ public class UniPayServiceImpl implements UniPayService {
             channelConfig.setParamMap(JsonUtils.parseMap(channelConfig.getParams()));
 
             // 处理支付
-            return processor.processPayment(amount, orderNo, channelConfig);
+            return processor.processPayment(amount, orderNo, channelConfig, remark);
         } catch (Exception e) {
             // 发生异常时释放通道资源
             payChannelService.paymentCompleted(orderNo, false);
