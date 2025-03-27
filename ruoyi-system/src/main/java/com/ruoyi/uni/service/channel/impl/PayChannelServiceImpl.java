@@ -7,8 +7,12 @@ import com.ruoyi.uni.model.Enum.PayChannelEnum;
 import com.ruoyi.uni.service.channel.PayChannelConfigMapperAdapter;
 import com.ruoyi.uni.service.channel.PayChannelService;
 import com.ruoyi.uni.service.channel.factory.impl.alipay.AlipayConfigLoader;
+import com.ruoyi.uni.service.channel.factory.impl.huifu.HuifuConfigLoader;
+import com.ruoyi.uni.service.channel.factory.impl.shouqianba.ShouQianBaConfigLoader;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -31,6 +35,12 @@ public class PayChannelServiceImpl implements PayChannelService {
 
     @Autowired
     private AlipayConfigLoader alipayConfigLoader;
+
+    @Autowired
+    private HuifuConfigLoader huifuConfigLoader;
+
+    @Autowired
+    private ShouQianBaConfigLoader shouQianBaConfigLoader;
 
     private static final String CHANNEL_CONFIG_CACHE_KEY = "pay:channel:config";
     private static final String ORDER_CHANNEL_MAP_KEY = "pay:order:channel";
@@ -128,7 +138,13 @@ public class PayChannelServiceImpl implements PayChannelService {
             alipayConfigLoader.mergeGlobalConfig(selectedChannel);
         }
         if (PayChannelEnum.HUIFU_MINIAPP.getName().equals(selectedChannel.getChannelName())) {
-            alipayConfigLoader.mergeGlobalConfig(selectedChannel);
+            huifuConfigLoader.mergeGlobalConfig(selectedChannel);
+        }
+        if (PayChannelEnum.HUIFU_ALIPAY.getName().equals(selectedChannel.getChannelName())) {
+            huifuConfigLoader.mergeGlobalConfig(selectedChannel);
+        }
+        if (PayChannelEnum.SHOUQIANBA_WX.getName().equals(selectedChannel.getChannelName())){
+            shouQianBaConfigLoader.mergeGlobalConfig(selectedChannel);
         }
         // 其他支付方式的配置加载
 

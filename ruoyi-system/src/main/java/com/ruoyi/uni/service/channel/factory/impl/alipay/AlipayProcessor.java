@@ -9,6 +9,7 @@ import com.alipay.api.response.AlipayTradeWapPayResponse;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.uni.config.PayChannelConfig;
 import com.ruoyi.alse.domain.PaymentResultDTO;
+import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PayChannelEnum;
 import com.ruoyi.uni.service.channel.factory.PayProcessor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,7 +79,7 @@ public class AlipayProcessor implements PayProcessor {
                 resultDTO.setOrderNo(orderNo);
                 resultDTO.setPaymentMethod(PayChannelEnum.ALIPAY.getCode());
                 resultDTO.setTotalAmount(amount);
-                resultDTO.setPaymentStatus(1); // 待支付
+                resultDTO.setPaymentStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
                 resultDTO.setPaymentUrl(response.getBody());
                 resultDTO.setRedirectType(1); // 链接跳转
                 resultDTO.setChannelId(channelConfig.getMerchantId());

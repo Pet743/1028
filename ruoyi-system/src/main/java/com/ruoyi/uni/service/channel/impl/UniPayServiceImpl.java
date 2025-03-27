@@ -36,11 +36,28 @@ public class UniPayServiceImpl implements UniPayService {
      */
     private final Map<String, PayProcessor> processorMap = new ConcurrentHashMap<>();
 
+    /**
+     * 支付处理器列表
+     */
+    private List<PayProcessor> processors;
+
     @Autowired
     public UniPayServiceImpl(List<PayProcessor> processors) {
-        processors.forEach(processor ->
-                processorMap.put(processor.getSupportedChannel().getCode(), processor)
-        );
+        this.processors = processors;
+        // 初始化处理器映射
+        initProcessorMap();
+    }
+
+    /**
+     * 初始化处理器映射
+     */
+    private void initProcessorMap() {
+        for (PayProcessor processor : processors) {
+            PayChannelEnum channelEnum = processor.getSupportedChannel();
+            // 使用支付方式名称作为键
+            processorMap.put(channelEnum.getName(), processor);
+            log.info("注册支付处理器: {} -> {}", channelEnum.getName(), processor.getClass().getSimpleName());
+        }
     }
 
     @Override
@@ -51,16 +68,10 @@ public class UniPayServiceImpl implements UniPayService {
             throw new ServiceException("不支持的支付方式: " + channelCode);
         }
 
-        // 2. 获取支付处理器
-        PayProcessor processor = processorMap.get(channelCode);
-        if (processor == null) {
-            throw new ServiceException("未找到支付处理器: " + channelCode);
-        }
-
-        // 3. 生成订单号
+        // 2. 生成订单号
         String orderNo = generateOrderNo(channelCode);
 
-        // 4. 选择支付通道
+        // 3. 选择支付通道
         PayChannelConfig channelConfig;
         try {
             channelConfig = payChannelService.selectChannel(channelCode, orderNo);
@@ -69,8 +80,21 @@ public class UniPayServiceImpl implements UniPayService {
             throw e;
         }
 
+        // 4. 获取支付处理器 - 基于通道名称
+        String channelName = channelConfig.getChannelName();
+        PayProcessor processor = processorMap.get(channelName);
+        if (processor == null) {
+            log.error("未找到支付处理器: channelCode={}, channelName={}", channelCode, channelName);
+            throw new ServiceException("未找到支付处理器: " + channelName);
+        }
+
+        log.info("使用支付处理器: {}, 通道名称: {}", processor.getClass().getSimpleName(), channelName);
+
+
         // 5. 异步创建虚拟订单
-        asyncCreateVirtualOrder(orderNo, amount, channelEnum.getSystem());
+        PayChannelEnum selectedChannelEnum = PayChannelEnum.getByName(channelName);
+        int system = selectedChannelEnum != null ? selectedChannelEnum.getSystem() : channelEnum.getSystem();
+        asyncCreateVirtualOrder(orderNo, amount, system);
 
         // 6. 处理支付
         try {

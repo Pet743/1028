@@ -9,6 +9,7 @@ import com.huifu.bspay.sdk.opps.core.net.BasePayRequest;
 import com.ruoyi.alse.domain.PaymentResultDTO;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.uni.config.PayChannelConfig;
+import com.ruoyi.uni.model.Enum.OrderStatusEnum;
 import com.ruoyi.uni.model.Enum.PayChannelEnum;
 import com.ruoyi.uni.service.channel.factory.PayProcessor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,20 +24,20 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class HuifuProcessor implements PayProcessor {
+public class HuifuAliPayProcessor implements PayProcessor {
 
     @Autowired
     private HuifuConfigLoader huifuConfigLoader;
 
     @Override
     public PayChannelEnum getSupportedChannel() {
-        return PayChannelEnum.HUIFU_MINIAPP;
+        return PayChannelEnum.HUIFU_ALIPAY;
     }
 
 
     @Override
     public PaymentResultDTO processPayment(BigDecimal amount, String orderNo, PayChannelConfig channelConfig, String remark) {
-        log.info("处理汇付微信小程序支付，订单号: {}, 商户号: {}", orderNo, channelConfig.getMerchantId());
+        log.info("处理汇付微信支付，订单号: {}, 商户号: {}", orderNo, channelConfig.getMerchantId());
 
         try {
             // 从通道配置中获取参数
@@ -84,7 +85,8 @@ public class HuifuProcessor implements PayProcessor {
             paramsInfo.put("notify_url", notifyUrl);
 
             // 发送请求到汇付API
-            Map<String, Object> responseStr = BasePayRequest.requestBasePay("v2/trade/hosting/payment/preorder", paramsInfo, null, false);
+            Map<String, Object> responseStr = BasePayRequest.requestBasePay("v2/trade/hosting/payment/preorder",
+                    paramsInfo, null, false);
 
             log.info("汇付响应: {}", JSON.toJSONString(responseStr));
 
@@ -104,7 +106,7 @@ public class HuifuProcessor implements PayProcessor {
             resultDTO.setOrderNo(orderNo);
             resultDTO.setPaymentMethod(PayChannelEnum.HUIFU_MINIAPP.getCode());
             resultDTO.setTotalAmount(amount);
-            resultDTO.setPaymentStatus(1); // 待支付
+            resultDTO.setPaymentStatus(OrderStatusEnum.PENDING_PAYMENT.getCode());
 
             // 将小程序支付数据转为JSON字符串作为结果
             JSONObject paymentData = new JSONObject();

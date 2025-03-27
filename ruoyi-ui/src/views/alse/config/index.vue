@@ -332,7 +332,8 @@ export default {
         { code: "qianbao", name: "钱包余额", system: 4, value: "" },
         { code: "zfb", name: "收钱吧", system: 5, value: "18" },
         { code: "zfb", name: "汇付支付宝", system: 6, value: "" },
-        { code: "vx", name: "汇付微信", system: 7, value: "" }
+        { code: "vx", name: "汇付微信", system: 7, value: "" },
+        { code: "vx", name: "收钱吧微信", system: 8, value: "" }
       ]
     };
   },
